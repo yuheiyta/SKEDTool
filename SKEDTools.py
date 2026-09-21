@@ -1,3 +1,4 @@
+from schedule_text import normalize_text
 from astropy.coordinates import SkyCoord, ICRS, Galactic, FK4, FK5, EarthLocation, AltAz
 from astropy.coordinates import get_sun
 import astropy.units as u
@@ -37,8 +38,20 @@ class DRG:
         self.adjust()
         
     def read(self, filename):
-        with open(filename, "r") as f:
-            alllines = f.readlines()
+        with open(filename, encoding="utf-8-sig") as stream:
+            self.readtxt(stream.read())
+
+    def readtxt(self, text):
+        text = normalize_text(text)
+        for section in ("$EXPER", "$SOURCES", "$SKED", "$STATIONS"):
+            if section not in text:
+                raise ValueError("Missing section: " + section)
+        candidate = DRG()
+        candidate._readtxt(text)
+        self.__dict__.update(candidate.__dict__)
+
+    def _readtxt(self, text):
+        alllines = text.splitlines()
         lines = Read_drg(alllines,"EXPER",readcomment=True)
         self.exper = Read_experline(lines)
         lines = Read_drg(alllines,"SOURCES")
@@ -75,34 +88,13 @@ class DRG:
         alllines.append("$CODES\n*")
         return "\n".join(alllines)
         
-    def write(self, filename=""):
-        if(type(filename) is str):
-            f = open(filename,"w")
-            #print("2")
+    def write(self, filename):
+        text = self.output()
+        if hasattr(filename, "write"):
+            filename.write(text + "\n")
         else:
-            f = filename
-            #print("3")
-        try:
-            #print(f)
-            lines = self.exper.output()
-            for line in lines:
-                print(line, file=f)
-            print("$PARAM\nSYNCHRONIZE OFF",file=f)
-            lines = self.source.output()
-            for line in lines:
-                print(line, file=f)
-            lines = self.station.output()
-            for line in lines:
-                print(line, file=f)  
-            lines = self.sked.output()
-            for line in lines:
-                print(line, file=f) 
-            print("$HEAD\n*",file=f)
-            print("$CODES\n*",file=f)
-        except Exception as e:
-            print(e)
-        f.close()
-        
+            Path(filename).write_text(text + "\n", encoding="utf-8")
+
     def check(self):
         #Check Az, El limit and slew speed. Only at the beginning an end of each scan.
         # sourcelist = self.source
@@ -471,7 +463,7 @@ class DRG:
                         sked_source = source
                         continue
                 if(sked_source==None):
-                    print("No corresponding source")
+                    raise ValueError("No corresponding source: " + name)
                 stations = sked.stations
                 sked_antennas=[]
                 for station in stations:
@@ -480,7 +472,7 @@ class DRG:
                             sked_antennas.append(antenna)
                             continue
                 if(len(sked_antennas)!=len(stations)):
-                    print("No corresponding antenna(s)")
+                    raise ValueError("No corresponding antenna(s)")
                 sked.source = sked_source
                 sked.antennas = sked_antennas
             sorted_list=sorted(start_list)
@@ -854,51 +846,10 @@ def Query_Simbad(name):
     result_table = Simbad.query_object(name)
     return result_table
 
-def _catalog_path(filename):
-    # Desktop copies share the catalog; standalone deployments keep it beside the module.
-    directory = Path(__file__).resolve().parent
-    for candidate in (directory, directory.parent, directory.parent.parent):
-        path = candidate / filename
-        if path.is_file():
-            return path
-    raise FileNotFoundError("Catalog file not found: " + filename)
+def Query_VLBAcalib(c_target, f_th=0.1, sep_th=2.):
+    from calibrator_catalog import search_catalog
+    return search_catalog(c_target, f_th, 0, sep_th, expand=True)
 
-
-catalog_npy = None
-c_catalog = None
-def Query_VLBAcalib(c_target, f_th = 0.1, sep_th = 2.):
-    global catalog_npy, c_catalog
-    tab_c = sep_c = None
-    def search(f_th, sep_th):
-        nonlocal tab_c, sep_c
-        d2d = c_target.separation(c_catalog)
-        c_indices = np.where(d2d < sep_th*u.deg)[0]
-        sep_c = np.sort(d2d[c_indices].to_string(unit=u.deg, decimal=True, precision=2))
-        c_indices = c_indices[np.argsort(d2d[c_indices])]
-        #print(c_indices)
-        if(len(c_indices)==0):
-            return c_indices
-        else:
-            tab_c = catalog_npy[c_indices]
-            tab_c[:,8:17][tab_c[:,8:17] == '--']='nan'
-            mask = np.char.startswith(tab_c[:,8:17], '<')
-            tab_c[:,8:17][mask] = 'nan'
-            tab_f_search = tab_c[:,8:17].astype(float)
-            f_indices = np.where((tab_f_search > f_th).any(axis=1))[0]
-            return f_indices
-    if(catalog_npy is None):
-        f = open(_catalog_path('vlbacoord.pickle'),'rb')
-        c_catalog = pickle.load(f)
-        catalog_npy = np.load(_catalog_path("vlbacalib_allfreq_full2023a_thresh.npy"))
-    indices = []
-    #print(indices)
-    while(len(indices)==0):
-        msg="Search: < {:.1f} deg & > {} mJy".format(sep_th,int(f_th*1000.))
-        indices = search(f_th=f_th, sep_th=sep_th)
-        sep_th = sep_th*1.5
-        f_th = f_th*3./4.
-    return msg, np.insert(tab_c[indices], 0, sep_c[indices], axis=1)
-    
 ##############
 # For ELplot func.
 def trans_azel(coordinate,obstime,loc):

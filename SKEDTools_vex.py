@@ -1,3 +1,4 @@
+from schedule_text import normalize_text
 from astropy.coordinates import SkyCoord, ICRS, ITRS, Galactic, FK4, FK5, EarthLocation, AltAz
 from astropy.coordinates import get_sun
 from astropy import constants as const
@@ -37,55 +38,17 @@ class VEX:
 
     # have to be changed
     def read(self, filename):
-        with open(filename, "r") as f:
-            alllines = f.readlines()
-        lines = Ext_section(alllines,"HEADER",readcomment=True)
-        self.header = VEX_Header(lines)
-        lines = Ext_section(alllines,"GLOBAL",readcomment=True)
-        glob = Read_globallines(lines)
-        self.glob = glob
-        lines = Ext_section(alllines,"EXPER",readcomment=True)
-        exper = Read_experline(lines)
-        self.exper = exper
-        lines = Ext_section(alllines,"MODE",readcomment=True)
-        mode = Read_modelines(lines)
-        self.mode = mode
-        lines = Ext_section(alllines,"PROCEDURES",readcomment=True)
-        proc = Read_proclines(lines)
-        self.procedures = proc
-        lines = Ext_section(alllines,"FREQ",readcomment=True)
-        freq = Read_freqlines(lines)
-        self.freq = freq
-        lines = Ext_section(alllines,"IF",readcomment=True)
-        v_if = Read_IFlines(lines)
-        self.if_ = v_if
-        lines = Ext_section(alllines,"BBC",readcomment=True)
-        bbc = Read_bbclines(lines)
-        self.bbc = bbc
-        lines = Ext_section(alllines,"STATION",readcomment=True)
-        station = Read_stationlines(lines)
-        self.station = station
-        lines = Ext_section(alllines,"DAS",readcomment=True)
-        das = Read_daslines(lines)
-        self.das = das
-        lines = Ext_section(alllines,"SOURCE",readcomment=True)
-        source = Read_srclines(lines)
-        self.source = source
-        lines = Ext_section(alllines,"SCHED",readcomment=True)
-        sched = Read_schedlines(lines)
-        self.sched = sched
-        lines = Ext_section(alllines,"SITE",readcomment=True)
-        site = Read_sitelines(lines)
-        self.site = site
-        lines = Ext_section(alllines,"ANTENNA",readcomment=True)
-        antenna = Read_antlines(lines)
-        self.antenna = antenna
-        self.adjust()
+        with open(filename, encoding="utf-8-sig") as stream:
+            self.readtxt(stream.read())
 
-    def readtxt(self, alllines):
-        alllines = alllines.split("\n")
-        #with open(filename, "r") as f:
-        #    alllines = f.readlines()
+    def readtxt(self, text):
+        text = normalize_text(text)
+        candidate = VEX()
+        candidate._readtxt(text)
+        self.__dict__.update(candidate.__dict__)
+
+    def _readtxt(self, text):
+        alllines = text.splitlines()
         lines = Ext_section(alllines,"HEADER",readcomment=True)
         self.header = VEX_Header(lines)
         lines = Ext_section(alllines,"GLOBAL",readcomment=True)
@@ -128,25 +91,13 @@ class VEX:
         antenna = Read_antlines(lines)
         self.antenna = antenna
         self.adjust()
-    def write(self,file):
-        if(file == sys.stdout):
-            f=file
+    def write(self, filename):
+        text = self.output()
+        if hasattr(filename, "write"):
+            filename.write(text + "\n")
         else:
-            f=open(file,"w")
-        print(self.header.output(), file=f)
-        print(self.glob.output(), file=f)
-        print(self.exper.output(), file=f)
-        print(self.mode.output(), file=f)
-        print(self.procedures.output(), file=f)
-        print(self.freq.output(), file=f)
-        print(self.if_.output(), file=f)
-        print(self.bbc.output(), file=f)
-        print(self.station.output(), file=f)
-        print(self.das.output(), file=f)
-        print(self.source.output(), file=f)
-        print(self.sched.output(), file=f)
-        print(self.site.output(), file=f)
-        print(self.antenna.output(), file=f)
+            Path(filename).write_text(text + "\n", encoding="utf-8")
+
     def output_sys(self):
         self.write(file=sys.stdout)
     def output(self):
@@ -1542,49 +1493,9 @@ def Query_Simbad(name):
     result_table = Simbad.query_object(name)
     return result_table
 
-def _catalog_path(filename):
-    # Desktop copies share the catalog; standalone deployments keep it beside the module.
-    directory = Path(__file__).resolve().parent
-    for candidate in (directory, directory.parent, directory.parent.parent):
-        path = candidate / filename
-        if path.is_file():
-            return path
-    raise FileNotFoundError("Catalog file not found: " + filename)
-
-
-catalog_npy = None
-c_catalog = None
-def Query_VLBAcalib(c_target, f_th = 0.1, sep_min = 0.32, sep_max=2.2):
-    global catalog_npy, c_catalog
-    tab_c = sep_c = None
-    def search(f_th, sep_min, sep_max):
-        nonlocal tab_c, sep_c
-        d2d = c_target.separation(c_catalog)
-        c_indices = np.where((sep_min*u.deg<= d2d) & (d2d <= sep_max*u.deg))[0]
-        sep_c = np.sort(d2d[c_indices].to_string(unit=u.deg, decimal=True, precision=2))
-        c_indices = c_indices[np.argsort(d2d[c_indices])]
-        #print(c_indices)
-        if(len(c_indices)==0):
-            return c_indices
-        else:
-            tab_c = catalog_npy[c_indices]
-            tab_c[:,8:17][tab_c[:,8:17] == '--']='nan'
-            mask = np.char.startswith(tab_c[:,8:17], '<')
-            tab_c[:,8:17][mask] = 'nan'
-            tab_f_search = tab_c[:,8:17].astype(float)
-            f_indices = np.where((tab_f_search > f_th).any(axis=1))[0]
-            return f_indices
-    if(catalog_npy is None):
-        f = open(_catalog_path('vlbacoord.pickle'),'rb')
-        c_catalog = pickle.load(f)
-        catalog_npy = np.load(_catalog_path("vlbacalib_allfreq_full2023a_thresh.npy"))
-    indices = []
-    #print(indices)
-    while(len(indices)==0):
-        msg="Search: > {} mJy".format(int(f_th*1000.))
-        indices = search(f_th=f_th, sep_min=sep_min, sep_max=sep_max)
-        f_th = f_th*3./4.
-    return msg, np.insert(tab_c[indices], 0, sep_c[indices], axis=1)
+def Query_VLBAcalib(c_target, f_th=0.1, sep_min=0.32, sep_max=2.2):
+    from calibrator_catalog import search_catalog
+    return search_catalog(c_target, f_th, sep_min, sep_max)
 
 def _earthlocation_to_altaz(location, reference_location):
     # See

@@ -22,7 +22,7 @@ class Page:
         pass
 
 
-def create_session(editor):
+def create_session(editor, web=False):
     captured = {}
     def capture(frame, event, arg):
         if event == 'return' and frame.f_code is editor.main.__code__:
@@ -30,7 +30,9 @@ def create_session(editor):
     previous = sys.getprofile()
     sys.setprofile(capture)
     try:
-        editor.main(Page())
+        page = Page()
+        page.web = web
+        editor.main(page)
     finally:
         sys.setprofile(previous)
     return captured

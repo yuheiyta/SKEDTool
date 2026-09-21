@@ -1,0 +1,13 @@
+# Configuration only. No deployment is performed by creating this file.
+services:
+  - type: web
+    name: skedtool
+    runtime: docker
+    plan: free
+    autoDeploy: false
+    healthCheckPath: /
+    envVars:
+      - key: FLET_FORCE_WEB_SERVER
+        value: "true"
+      - key: FLET_SESSION_TIMEOUT
+        value: "600"

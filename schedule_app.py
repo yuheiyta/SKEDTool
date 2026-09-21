@@ -1,4 +1,5 @@
 """Shared desktop entry point for the JVN and VERA editors."""
+import os
 from pathlib import Path
 
 import flet as ft
@@ -24,4 +25,8 @@ def main(page):
 
 
 if __name__ == "__main__":
-    ft.app(target=main)
+    if os.environ.get('FLET_FORCE_WEB_SERVER', '').lower() in ('1', 'true') or os.environ.get('PORT'):
+        ft.app(target=main, view=None, host='0.0.0.0',
+               port=int(os.environ.get('PORT', os.environ.get('FLET_SERVER_PORT', '8000'))))
+    else:
+        ft.app(target=main)

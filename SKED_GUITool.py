@@ -1,5 +1,10 @@
+from astronomy_helpers import simbad_coordinate
+from schedule_validation import validate_schedule
+from iers_status import check_iers
+from schedule_io import show_paste, show_outputs
 import SKEDTools
-from drg_conversion import convert_drg
+from drg_conversion import convert_drg, converter_path
+from xml_conversion import convert_xml, xml_script
 from pathlib import Path
 import os,glob,subprocess
 import flet as ft
@@ -44,72 +49,24 @@ def main(page: Page):
 
     @error_handler
     def generate_skd(e):
-        outputs = convert_drg(drg.output(), drg.exper.obscode or "schedule")
-        def close_dialog(e):
-            dialog.open = False
-            page.update()
-        controls = []
-        for filename, content in outputs.items():
-            controls.extend([
-                ft.Text(filename),
-                ft.TextField(value=content, multiline=True, read_only=True,
-                             min_lines=5, max_lines=10),
-                ft.ElevatedButton("Copy " + filename,
-                    on_click=lambda e, text=content: page.set_clipboard(text)),
-            ])
-        dialog = ft.AlertDialog(
-            title=ft.Text("Generated SKD"),
-            content=ft.Container(ft.Column(controls, scroll=ft.ScrollMode.ALWAYS),
-                                 width=700, height=500),
-            actions=[ft.TextButton("Close", on_click=close_dialog)],
-        )
-        page.dialog = dialog
-        dialog.open = True
-        page.update()
+        validate_schedule(drg, vera=False)
+        show_outputs(page, convert_drg(drg.output(), drg.exper.obscode or "schedule"))
 
-    @error_handler        
-    def pick_file_skd(e: ft.FilePickerResultEvent):
-        if(e.files!=None):
-            lsprev = subprocess.run(["ls", "-l"], stdout=subprocess.PIPE, text=True)
-            #path = e.files[0].path.replace(".DRG","")
-            obscode = e.files[0].path.replace(".DRG","").split("/")[-1]
-            #obscode = path.split("/")[-1].split(".")[-2]
-            print("./drgconv2020.out {}".format(obscode))
-            os.system("./drgconv2020.out {}".format(obscode))
-            lsaft = subprocess.run(["ls", "-l"], stdout=subprocess.PIPE, text=True)
-            if(os.path.isfile(obscode+"a.skd") and os.path.isfile(obscode+"o.skd") and lsprev!=lsaft):
-                print("Made .skd files")
-                file_make_out.value ="Made .skd files"
-            else:
-                print("Failed")
-                file_make_out.value = "Failed"
-        else:
-            print("Cancelled!")
-        page.update()
+    @error_handler
+    def generate_xml(e):
+        validate_schedule(drg, vera=False)
+        outputs = convert_xml(drg.output(), frequency=file_xml_freq.value,
+            recorder=file_xml_rec.value, scans=file_xml_scan.value,
+            length=file_xml_length.value, fft=file_xml_fft.value,
+            delay=file_xml_delay.value, rate=file_xml_rate.value)
+        show_outputs(page, outputs)
 
-    @error_handler        
-    def pick_file_xml(e: ft.FilePickerResultEvent):
-        if(e.files!=None):
-            lsprev = subprocess.run(["ls", "-l"], stdout=subprocess.PIPE, text=True)
-            path = e.files[0].path.replace(".DRG","")
-            obscode = e.files[0].path.replace(".DRG","").split("/")[-1]
-            #obscode = path.split("/")[-1].split(".")[-2]
-            com = "python ./mk_xml.py --drg ./{}.DRG --frequency {} --type 1 --recorder {} --recstart 0 --delay {} --rate {} --scan {} --length {} --fft {} -y".format(
-            obscode,file_xml_freq.value,file_xml_rec.value, file_xml_delay.value, file_xml_rate.value, file_xml_scan.value,file_xml_length.value, file_xml_fft.value)
-            print(com)
-            os.system(com)
-            resxml = glob.glob(obscode+"*.xml")
-            #print(resxml,not resxml)
-            lsaft = subprocess.run(["ls", "-l"], stdout=subprocess.PIPE, text=True)
-            if(bool(resxml) and lsprev!=lsaft):
-                print("Made .xml file")
-                file_make_out.value ="Made .xml file"
-            else:
-                print("Failed")
-                file_make_out.value = "Failed"
-        else:
-            print("Cancelled!")
-        page.update()
+    def import_fromtxt(e):
+        def apply(text):
+            drg.readtxt(text)
+            selected_file.value = drg.exper.obscode
+            all_update(selected_index=0)
+        show_paste(page, apply)
 
     @error_handler 
     def exp_update():
@@ -232,7 +189,7 @@ def main(page: Page):
     def src_simbadquery(e):
         tab = SKEDTools.Query_Simbad(src_name1.value)
         if(tab is not None):
-            c = SkyCoord(ra='{}h{}m{}s'.format(*tab['RA'][0].split(' ')), dec='{}d{}m{}s'.format(*tab['DEC'][0].split(' '))).to_string('hmsdms').split()
+            c = simbad_coordinate(tab).to_string('hmsdms').split()
             src_ra.value = c[0]
             src_dec.value = c[1]
             page.update()
@@ -409,6 +366,7 @@ def main(page: Page):
 
     @error_handler     
     def skd_azel(e):
+        iers_text.value = check_iers(validate_schedule(drg, vera=False))
         def check_slewspeed(altaz_p,altaz_i,sked_antenna,timed):
             if(abs(sked_antenna.lim[0][1]-sked_antenna.lim[0][0])< 360.):
                 if(np.abs((altaz_p.az.deg - altaz_i.az.deg)/float(sked_antenna.rate[0])) > (timed).sec/60.):
@@ -495,6 +453,7 @@ def main(page: Page):
 
     @error_handler        
     def lst_elplot(e):
+        iers_text.value = check_iers(validate_schedule(drg, vera=False))
         srcnames=[]
         for i in selected_src:
             srcnames.append(drg.source.sources[i-1].name)
@@ -506,6 +465,7 @@ def main(page: Page):
 
     @error_handler           
     def ut_elplot(e):
+        iers_text.value = check_iers(validate_schedule(drg, vera=False))
         srcnames=[]
         for i in selected_src:
             srcnames.append(drg.source.sources[i-1].name)
@@ -514,6 +474,7 @@ def main(page: Page):
         page.update()
         
     def jst_elplot(e):
+        iers_text.value = check_iers(validate_schedule(drg, vera=False))
         srcnames=[]
         for i in selected_src:
             srcnames.append(drg.source.sources[i-1].name)
@@ -543,6 +504,15 @@ def main(page: Page):
 
     @error_handler    
     def drg_check(e):
+        scans = validate_schedule(drg, vera=False)
+        iers_text.value = "IERSデータを確認しています…"
+        file_output_text.value = ""
+        page.update()
+        try:
+            iers_text.value = check_iers(scans)
+        except Exception as error:
+            iers_text.value = str(error)
+            raise
         file_output_text.value="Processing..."
         page.update()
         msg = drg.check()
@@ -552,6 +522,15 @@ def main(page: Page):
 
     @error_handler     
     def drg_deepcheck(e):
+        scans = validate_schedule(drg, vera=False)
+        iers_text.value = "IERSデータを確認しています…"
+        file_output_text.value = ""
+        page.update()
+        try:
+            iers_text.value = check_iers(scans)
+        except Exception as error:
+            iers_text.value = str(error)
+            raise
         file_output_text.value="Processing..."
         page.update()
         msg, fig = drg.azelplot()
@@ -561,10 +540,9 @@ def main(page: Page):
 
     @error_handler    
     def copy_clip(e):
-       exp_txt.value=""
-       lines = drg.output()
-       page.set_clipboard(lines)
-       exp_txt.value="Copied!"
+        validate_schedule(drg, vera=False)
+        show_outputs(page, {"schedule.DRG": drg.output()})
+
 
 
     @error_handler    
@@ -664,8 +642,8 @@ def main(page: Page):
     outputfont = "Consolas"
     
     import_file_dialog = ft.FilePicker(on_result=pick_file_result)
-    make_skd_dialog = ft.FilePicker(on_result=pick_file_skd)
-    make_xml_dialog = ft.FilePicker(on_result=pick_file_xml)
+    make_skd_dialog = ft.FilePicker()
+    make_xml_dialog = ft.FilePicker()
     selected_file = ft.Text()
 
     bstxt = ft.Text("",font_family=outputfont, color=ft.colors.BLACK, selectable=True)
@@ -676,11 +654,12 @@ def main(page: Page):
     @error_handler 
     def save_file_result(e: ft.FilePickerResultEvent):
         if(e.path!=None):
+            validate_schedule(drg, vera=False)
             path = e.path
             #path = e.files[0].path
             #print(path)
-            exp_txt.value = "Saved at "+str(path)
             drg.write(path)
+            exp_txt.value = "Saved at " + str(path)
             page.update()
             #selected_file.value = obscode
             #selected_file.update()
@@ -695,15 +674,16 @@ def main(page: Page):
     page.overlay.extend([import_file_dialog, save_file_dialog,make_skd_dialog,make_xml_dialog])
 
     file_txt = ft.Text("File Manager")
-    file_imp = ft.ElevatedButton(text="Import",icon=ft.icons.UPLOAD_FILE,on_click=lambda _: import_file_dialog.pick_files())
-    file_imp_row = ft.Row([file_imp,selected_file])
-    file_exp = ft.ElevatedButton(text="Export",icon=ft.icons.SAVE,on_click=lambda _: save_file_dialog.save_file())
+    file_imp = ft.ElevatedButton(text="Import",disabled=page.web,icon=ft.icons.UPLOAD_FILE,on_click=lambda _: import_file_dialog.pick_files())
+    file_imp_row = ft.Row([file_imp, ft.ElevatedButton("Import from text", on_click=import_fromtxt), selected_file])
+    file_exp = ft.ElevatedButton(text="Export",disabled=page.web,icon=ft.icons.SAVE,on_click=lambda _: save_file_dialog.save_file())
     file_clip = ft.ElevatedButton(text="Copy Clipboard",on_click=copy_clip)
     file_exp_row = ft.Row([file_exp,file_clip,exp_txt])
     
     txt_space = ft.Text("",size=3)
     
     file_txt_check = ft.Text("Validation")
+    iers_text = ft.Text("IERS: 未確認（Check時に取得・更新します）", selectable=True)
     file_button_check = ft.ElevatedButton(text="Check",on_click=drg_check)
     file_button_deepcheck = ft.ElevatedButton(text="deepCheck",on_click=drg_deepcheck)
     file_row_check = ft.Row([file_button_check,file_button_deepcheck])
@@ -723,10 +703,10 @@ def main(page: Page):
     file_col_timeshift = ft.Column([file_row_timeshift,file_input_timeshift])
     file_row_shift =ft.Row([file_col_lstshift,file_col_timeshift],spacing=50)
     
-    file_make_txt = ft.Text("Make auxiliary files from saved \".DRG\" file (must be in the current directory.)")
-    file_make_skd = ft.ElevatedButton(text=".skd (saved DRG)",disabled=page.web,on_click=lambda _: make_skd_dialog.pick_files())
-    file_generate_skd = ft.ElevatedButton(text="Generate .skd from current schedule", on_click=generate_skd)
-    file_make_xml = ft.ElevatedButton(text=".xml",on_click=lambda _: make_xml_dialog.pick_files())
+    file_make_txt = ft.Text("編集中のスケジュールから生成（外部ツールを別途用意）")
+    file_make_skd = ft.Text("SKD変換器は別途用意が必要です。", visible=not converter_path().is_file())
+    file_generate_skd = ft.ElevatedButton(text="Generate .skd from current schedule", on_click=generate_skd, disabled=not converter_path().is_file())
+    file_make_xml = ft.ElevatedButton(text="Generate .xml",on_click=generate_xml, disabled=not xml_script().is_file())
     #file_xml_freq = ft.TextField(label = "Freq.", hint_text="ex) C",helper_text="C or X",width=14*6)
     file_xml_freq = ft.Dropdown(label="Frequency",width=14*10,options=[ft.dropdown.Option("C"),ft.dropdown.Option("X")],helper_text=" ")
     #file_xml_rec = ft.TextField(label = "Recorder", hint_text="ex) vsrec",helper_text="vsrec or octadisk",width=14*10)
@@ -743,8 +723,8 @@ def main(page: Page):
     file_make_out = ft.Text("")
 
     
-    #file_col = ft.Column([file_txt,file_imp_row,file_exp_row,file_txt_check,file_row_check,file_cont_output_check, file_txt_lstshift,file_row_lstshift,file_txt_timeshift,file_row_timeshift],scroll=ft.ScrollMode.ALWAYS)
-    file_col = ft.Column([txt_space,file_txt,file_imp_row,file_exp_row,txt_space,file_txt_check,file_row_check,file_cont_output_check, txt_space,file_row_shift,file_make_txt,file_generate_skd,file_make_skd,file_xml_row,file_make_out],scroll=ft.ScrollMode.ALWAYS)
+    #file_col = ft.Column([file_txt,file_imp_row,file_exp_row,file_txt_check,iers_text,file_row_check,file_cont_output_check, file_txt_lstshift,file_row_lstshift,file_txt_timeshift,file_row_timeshift],scroll=ft.ScrollMode.ALWAYS)
+    file_col = ft.Column([txt_space,file_txt,file_imp_row,file_exp_row,txt_space,file_txt_check,iers_text,file_row_check,file_cont_output_check, txt_space,file_row_shift,file_make_txt,file_generate_skd,file_make_skd,file_xml_row,file_make_out],scroll=ft.ScrollMode.ALWAYS)
     file_container = ft.Container(file_col, alignment=ft.alignment.top_center)
     file_tab = ft.Tab(text="Overview",content=file_container)
     
@@ -859,7 +839,7 @@ def main(page: Page):
     mpl.transparency=True
     
     #mpl = ft.Image()
-    plt_exp = ft.ElevatedButton(text="Export",icon=ft.icons.SAVE,on_click=lambda _: save_file_dialog.save_file(),disabled=page.web)
+    plt_exp = ft.ElevatedButton(text="Export",disabled=page.web,icon=ft.icons.SAVE,on_click=lambda _: save_file_dialog.save_file())
     plt_col =ft.Column([mpl,plt_exp],scroll=ft.ScrollMode.ALWAYS)
     plt_cont =ft.Container(plt_col,  alignment=ft.alignment.top_center)
     plt_tab = ft.Tab(text="Plot",content=plt_cont)  

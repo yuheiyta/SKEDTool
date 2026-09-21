@@ -1,8 +1,14 @@
 """Run the native DRG converter without shared input/output files."""
 from pathlib import Path
 import re
+import os
 import subprocess
 import tempfile
+
+
+def converter_path():
+    configured = os.environ.get('SKED_DRGCONV')
+    return Path(configured).expanduser().resolve() if configured else Path(__file__).parent / 'drgconv' / 'drgconv2020'
 
 
 def convert_drg(text, experiment="schedule", executable=None):
@@ -15,9 +21,9 @@ def convert_drg(text, experiment="schedule", executable=None):
         raise ValueError("DRG contains a NUL or a line longer than 510 bytes")
     if not all(section in text for section in ("$EXPER", "$SOURCES", "$SKED")):
         raise ValueError("DRG requires EXPER, SOURCES and SKED sections")
-    executable = Path(executable or Path(__file__).parent / "drgconv" / "drgconv2020").resolve()
+    executable = Path(executable or converter_path()).resolve()
     if not executable.is_file():
-        raise FileNotFoundError("Build the converter first: make -C drgconv")
+        raise FileNotFoundError("SKD変換器は同梱していません。利用許可のある実行ファイルをSKED_DRGCONVに設定してください。")
     with tempfile.TemporaryDirectory(prefix="schedule-drg-") as directory:
         working = Path(directory)
         normalized = text.replace("\r\n", "\n").replace("\r", "\n")

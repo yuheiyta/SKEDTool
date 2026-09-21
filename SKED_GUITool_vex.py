@@ -1,3 +1,7 @@
+from astronomy_helpers import simbad_coordinate
+from schedule_validation import validate_schedule
+from iers_status import check_iers
+from schedule_io import show_paste, show_outputs
 import SKEDTools_vex
 import os,glob,subprocess
 import flet as ft
@@ -44,50 +48,6 @@ def main(page: Page):
             all_update(selected_index=0)
         else:
             print("Cancelled!")
-
-    @error_handler        
-    def pick_file_skd(e: ft.FilePickerResultEvent):
-        if(e.files!=None):
-            lsprev = subprocess.run(["ls", "-l"], stdout=subprocess.PIPE, text=True)
-            #path = e.files[0].path.replace(".VEX","")
-            obscode = e.files[0].path.replace(".VEX","").split("/")[-1]
-            #obscode = path.split("/")[-1].split(".")[-2]
-            print("./drgconv2020.out {}".format(obscode))
-            os.system("./drgconv2020.out {}".format(obscode))
-            lsaft = subprocess.run(["ls", "-l"], stdout=subprocess.PIPE, text=True)
-            if(os.path.isfile(obscode+"a.skd") and os.path.isfile(obscode+"o.skd") and lsprev!=lsaft):
-                print("Made .skd files")
-                file_make_out.value ="Made .skd files"
-            else:
-                print("Failed")
-                file_make_out.value = "Failed"
-        else:
-            print("Cancelled!")
-        page.update()
-
-    @error_handler        
-    def pick_file_xml(e: ft.FilePickerResultEvent):
-        if(e.files!=None):
-            lsprev = subprocess.run(["ls", "-l"], stdout=subprocess.PIPE, text=True)
-            path = e.files[0].path.replace(".DRG","")
-            obscode = e.files[0].path.replace(".DRG","").split("/")[-1]
-            #obscode = path.split("/")[-1].split(".")[-2]
-            com = "python ./mk_xml.py --drg ./{}.DRG --frequency {} --type 1 --recorder {} --recstart 0 --delay {} --rate {} --scan {} --length {} --fft {} -y".format(
-            obscode,file_xml_freq.value,file_xml_rec.value, file_xml_delay.value, file_xml_rate.value, file_xml_scan.value,file_xml_length.value, file_xml_fft.value)
-            print(com)
-            os.system(com)
-            resxml = glob.glob(obscode+"*.xml")
-            #print(resxml,not resxml)
-            lsaft = subprocess.run(["ls", "-l"], stdout=subprocess.PIPE, text=True)
-            if(bool(resxml) and lsprev!=lsaft):
-                print("Made .xml file")
-                file_make_out.value ="Made .xml file"
-            else:
-                print("Failed")
-                file_make_out.value = "Failed"
-        else:
-            print("Cancelled!")
-        page.update()
 
     @error_handler 
     def exp_update():
@@ -285,7 +245,7 @@ def main(page: Page):
     def src_simbadquery(e):
         tab = SKEDTools_vex.Query_Simbad(src_name1.value)
         if(tab is not None):
-            c = SkyCoord(ra='{}h{}m{}s'.format(*tab['RA'][0].split(' ')), dec='{}d{}m{}s'.format(*tab['DEC'][0].split(' '))).to_string('hmsdms').split()
+            c = simbad_coordinate(tab).to_string('hmsdms').split()
             src_ra.value = c[0]
             src_dec.value = c[1]
             page.update()
@@ -369,11 +329,11 @@ def main(page: Page):
         if(src_name2.value != ""):
             name2=src_name2.value
             #newsrc = SKEDTools_vex.Source(name1,c,name2=name2)
-            newsrc = SKEDTools_vex.Source(name1,name1,ra=c.ra.to_string('hour'),dec=c.dec.to_string('deg'),ref_coord_frame="J2000",name2=name2)
+            newsrc = SKEDTools_vex.Source(name1,name1,ra=c.icrs.ra.to_string('hour'),dec=c.icrs.dec.to_string('deg'),ref_coord_frame="J2000",name2=name2)
         else:
             #newsrc = SKEDTools_vex.Source(name1,c)
             #print(c.ra.to_string())
-            newsrc = SKEDTools_vex.Source(name1,name1,ra=c.ra.to_string('hour'),dec=c.dec.to_string('deg'),ref_coord_frame="J2000")
+            newsrc = SKEDTools_vex.Source(name1,name1,ra=c.icrs.ra.to_string('hour'),dec=c.icrs.dec.to_string('deg'),ref_coord_frame="J2000")
         #print(vex.source, newsrc)
         vex.source.add(newsrc)
         src_update()
@@ -501,6 +461,7 @@ def main(page: Page):
     #@profile
     @error_handler     
     def skd_azel(e):
+        iers_text.value = check_iers(validate_schedule(vex, vera=True))
         def check_slewspeed(altaz_p,altaz_i,sked_antenna,timed):
             if(abs(sked_antenna.lim[0][1]-sked_antenna.lim[0][0])< 360.):
                 if(np.abs((altaz_p.az.deg - altaz_i.az.deg)/float(sked_antenna.rate[0])) > (timed).sec/60.):
@@ -595,6 +556,7 @@ def main(page: Page):
     #@profile
     @error_handler        
     def lst_elplot(e):
+        iers_text.value = check_iers(validate_schedule(vex, vera=True))
         srcnames=[]
         for i in selected_src:
             srcnames.append(vex.source.list[i-1].name)
@@ -607,6 +569,7 @@ def main(page: Page):
 
     @error_handler           
     def ut_elplot(e):
+        iers_text.value = check_iers(validate_schedule(vex, vera=True))
         srcnames=[]
         for i in selected_src:
             srcnames.append(vex.source.list[i-1].name)
@@ -617,6 +580,7 @@ def main(page: Page):
         
     @error_handler
     def jst_elplot(e):
+        iers_text.value = check_iers(validate_schedule(vex, vera=True))
         srcnames=[]
         for i in selected_src:
             srcnames.append(vex.source.list[i-1].name)
@@ -627,6 +591,7 @@ def main(page: Page):
  
     @error_handler
     def skd_uvplot(e):
+        iers_text.value = check_iers(validate_schedule(vex, vera=True))
         if(skd_uvplot_sta.value != ""):
             antcodes = [antcode.strip() for antcode in skd_uvplot_sta.value.split(",") if antcode.strip()]
             fig = vex.uvplot(skd_uvplot_srcname.value, antcodes=antcodes)
@@ -720,6 +685,15 @@ def main(page: Page):
 
     @error_handler    
     def vex_check(e):
+        scans = validate_schedule(vex, vera=True)
+        iers_text.value = "IERSデータを確認しています…"
+        file_output_text.value = ""
+        page.update()
+        try:
+            iers_text.value = check_iers(scans)
+        except Exception as error:
+            iers_text.value = str(error)
+            raise
         file_output_text.value="Processing..."
         page.update()
         msg = vex.check()
@@ -729,6 +703,15 @@ def main(page: Page):
 
     @error_handler     
     def vex_deepcheck(e):
+        scans = validate_schedule(vex, vera=True)
+        iers_text.value = "IERSデータを確認しています…"
+        file_output_text.value = ""
+        page.update()
+        try:
+            iers_text.value = check_iers(scans)
+        except Exception as error:
+            iers_text.value = str(error)
+            raise
         file_output_text.value="Processing..."
         page.update()
         msg, fig = vex.azelplot()
@@ -738,10 +721,9 @@ def main(page: Page):
 
     @error_handler    
     def copy_clip(e):
-       exp_txt.value=""
-       lines = vex.output()
-       page.set_clipboard(lines)
-       exp_txt.value="Copied!"
+        validate_schedule(vex, vera=True)
+        show_outputs(page, {"schedule.vex": vex.output()})
+
 
 
     #@error_handler    
@@ -867,31 +849,11 @@ def main(page: Page):
         
 
     def import_fromtxt(e):
-        @error_handler  
-        def txtbox_apply(e):
-            #print(import_txtfield.value)
-            vex.readtxt(import_txtfield.value)
-            dlg_outtxt.value="Read "+vex.glob.exper
+        def apply(text):
+            vex.readtxt(text)
             selected_file.value = vex.glob.exper
             all_update(selected_index=0)
-            page.update()
-        def txtbox_clear(e):
-            import_txtfield.value=""
-            page.update()
-        def close_dlg(e):
-            dlg.open = False
-            page.update()
-        import_txtfield = ft.TextField(label="Paste here",multiline=True)
-        import_txtbox = ft.Column([import_txtfield],height=400,width=700,scroll=ft.ScrollMode.ALWAYS)
-        dlgtxt = ft.Text("")
-        dlg_outtxt= ft.Text("")
-        dlgcont = ft.Column([dlgtxt,import_txtbox,dlg_outtxt])
-        dlg = ft.AlertDialog(content = dlgcont, actions=[ft.TextButton("Apply", on_click=txtbox_apply),
-                                                         ft.TextButton("Clear", on_click=txtbox_clear),
-                                                         ft.TextButton("Close", on_click=close_dlg)],)
-        page.dialog = dlg
-        dlg.open = True
-        page.update()
+        show_paste(page, apply)
 
     page.title = "SKED Tool"  # アプリタイトル
     src_index, skd_index, plt_index = 3,4,5
@@ -952,8 +914,8 @@ def main(page: Page):
     outputfont = "Consolas"
     
     import_file_dialog = ft.FilePicker(on_result=pick_file_result)
-    make_skd_dialog = ft.FilePicker(on_result=pick_file_skd)
-    make_xml_dialog = ft.FilePicker(on_result=pick_file_xml)
+    make_skd_dialog = ft.FilePicker()
+    make_xml_dialog = ft.FilePicker()
     selected_file = ft.Text()
 
     bstxt = ft.Text("",font_family=outputfont, color=ft.colors.BLACK, selectable=True)
@@ -964,11 +926,12 @@ def main(page: Page):
     @error_handler 
     def save_file_result(e: ft.FilePickerResultEvent):
         if(e.path!=None):
+            validate_schedule(vex, vera=True)
             path = e.path
             #path = e.files[0].path
             #print(path)
-            exp_txt.value = "Saved at "+str(path)
             vex.write(path)
+            exp_txt.value = "Saved at " + str(path)
             page.update()
             #exp_txt.update()
             #selected_file.value = obscode
@@ -984,16 +947,17 @@ def main(page: Page):
     page.overlay.extend([import_file_dialog, save_file_dialog,make_skd_dialog,make_xml_dialog])
 
     file_txt = ft.Text("File Manager")
-    file_imp = ft.ElevatedButton(text="Import",disabled=True, icon=ft.icons.UPLOAD_FILE,on_click=lambda _: import_file_dialog.pick_files())
+    file_imp = ft.ElevatedButton(text="Import",disabled=page.web, icon=ft.icons.UPLOAD_FILE,on_click=lambda _: import_file_dialog.pick_files())
     file_imp_paste = ft.ElevatedButton(text="Import from text",on_click=import_fromtxt)
     file_imp_row = ft.Row([file_imp,file_imp_paste, selected_file])
-    file_exp = ft.ElevatedButton(text="Export",disabled=True,icon=ft.icons.SAVE,on_click=lambda _: save_file_dialog.save_file())
+    file_exp = ft.ElevatedButton(text="Export",disabled=page.web,icon=ft.icons.SAVE,on_click=lambda _: save_file_dialog.save_file())
     file_clip = ft.ElevatedButton(text="Copy Clipboard",on_click=copy_clip)
     file_exp_row = ft.Row([file_exp,file_clip,exp_txt])
     
     txt_space = ft.Text("",size=3)
     
     file_txt_check = ft.Text("Validation")
+    iers_text = ft.Text("IERS: 未確認（Check時に取得・更新します）", selectable=True)
     file_button_check = ft.ElevatedButton(text="Check",on_click=vex_check)
     file_button_deepcheck = ft.ElevatedButton(text="deepCheck",on_click=vex_deepcheck)
     #file_row_check = ft.Row([file_button_check,file_button_deepcheck])
@@ -1033,9 +997,9 @@ def main(page: Page):
     file_make_out = ft.Text("")
 
     
-    #file_col = ft.Column([file_txt,file_imp_row,file_exp_row,file_txt_check,file_row_check,file_cont_output_check, file_txt_lstshift,file_row_lstshift,file_txt_timeshift,file_row_timeshift],scroll=ft.ScrollMode.ALWAYS)
-    #file_col = ft.Column([txt_space,file_txt,file_imp_row,file_exp_row,txt_space,file_txt_check,file_row_check,file_cont_output_check, txt_space,file_row_shift,file_make_txt,file_make_skd,file_xml_row,file_make_out],scroll=ft.ScrollMode.ALWAYS)
-    file_col = ft.Column([txt_space,file_txt,file_imp_row,file_exp_row,txt_space,file_txt_check,file_row_check,file_cont_output_check, txt_space,file_row_shift],scroll=ft.ScrollMode.ALWAYS)
+    #file_col = ft.Column([file_txt,file_imp_row,file_exp_row,file_txt_check,iers_text,file_row_check,file_cont_output_check, file_txt_lstshift,file_row_lstshift,file_txt_timeshift,file_row_timeshift],scroll=ft.ScrollMode.ALWAYS)
+    #file_col = ft.Column([txt_space,file_txt,file_imp_row,file_exp_row,txt_space,file_txt_check,iers_text,file_row_check,file_cont_output_check, txt_space,file_row_shift,file_make_txt,file_make_skd,file_xml_row,file_make_out],scroll=ft.ScrollMode.ALWAYS)
+    file_col = ft.Column([txt_space,file_txt,file_imp_row,file_exp_row,txt_space,file_txt_check,iers_text,file_row_check,file_cont_output_check, txt_space,file_row_shift],scroll=ft.ScrollMode.ALWAYS)
     file_container = ft.Container(file_col, alignment=ft.alignment.top_center)
     file_tab = ft.Tab(text="Overview",content=file_container)
     
