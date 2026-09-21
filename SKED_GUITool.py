@@ -1,7 +1,6 @@
 from astronomy_helpers import simbad_coordinate
 from schedule_validation import validate_schedule
-from iers_status import check_iers
-from schedule_io import show_paste, show_outputs
+from schedule_io import show_paste, show_outputs, prepare_iers
 import SKEDTools
 from drg_conversion import convert_drg, converter_path
 from xml_conversion import convert_xml, xml_script
@@ -366,7 +365,7 @@ def main(page: Page):
 
     @error_handler     
     def skd_azel(e):
-        iers_text.value = check_iers(validate_schedule(drg, vera=False))
+        prepare_iers(page, iers_text, validate_schedule(drg, vera=False))
         def check_slewspeed(altaz_p,altaz_i,sked_antenna,timed):
             if(abs(sked_antenna.lim[0][1]-sked_antenna.lim[0][0])< 360.):
                 if(np.abs((altaz_p.az.deg - altaz_i.az.deg)/float(sked_antenna.rate[0])) > (timed).sec/60.):
@@ -453,7 +452,7 @@ def main(page: Page):
 
     @error_handler        
     def lst_elplot(e):
-        iers_text.value = check_iers(validate_schedule(drg, vera=False))
+        prepare_iers(page, iers_text, validate_schedule(drg, vera=False))
         srcnames=[]
         for i in selected_src:
             srcnames.append(drg.source.sources[i-1].name)
@@ -465,7 +464,7 @@ def main(page: Page):
 
     @error_handler           
     def ut_elplot(e):
-        iers_text.value = check_iers(validate_schedule(drg, vera=False))
+        prepare_iers(page, iers_text, validate_schedule(drg, vera=False))
         srcnames=[]
         for i in selected_src:
             srcnames.append(drg.source.sources[i-1].name)
@@ -473,8 +472,9 @@ def main(page: Page):
         mpl.figure=fig
         page.update()
         
+    @error_handler
     def jst_elplot(e):
-        iers_text.value = check_iers(validate_schedule(drg, vera=False))
+        prepare_iers(page, iers_text, validate_schedule(drg, vera=False))
         srcnames=[]
         for i in selected_src:
             srcnames.append(drg.source.sources[i-1].name)
@@ -505,14 +505,8 @@ def main(page: Page):
     @error_handler    
     def drg_check(e):
         scans = validate_schedule(drg, vera=False)
-        iers_text.value = "IERSデータを確認しています…"
         file_output_text.value = ""
-        page.update()
-        try:
-            iers_text.value = check_iers(scans)
-        except Exception as error:
-            iers_text.value = str(error)
-            raise
+        prepare_iers(page, iers_text, scans)
         file_output_text.value="Processing..."
         page.update()
         msg = drg.check()
@@ -523,14 +517,8 @@ def main(page: Page):
     @error_handler     
     def drg_deepcheck(e):
         scans = validate_schedule(drg, vera=False)
-        iers_text.value = "IERSデータを確認しています…"
         file_output_text.value = ""
-        page.update()
-        try:
-            iers_text.value = check_iers(scans)
-        except Exception as error:
-            iers_text.value = str(error)
-            raise
+        prepare_iers(page, iers_text, scans)
         file_output_text.value="Processing..."
         page.update()
         msg, fig = drg.azelplot()
@@ -683,7 +671,7 @@ def main(page: Page):
     txt_space = ft.Text("",size=3)
     
     file_txt_check = ft.Text("Validation")
-    iers_text = ft.Text("IERS: 未確認（Check時に取得・更新します）", selectable=True)
+    iers_text = ft.Text("IERS: Not checked (checked before validation and plots)", selectable=True)
     file_button_check = ft.ElevatedButton(text="Check",on_click=drg_check)
     file_button_deepcheck = ft.ElevatedButton(text="deepCheck",on_click=drg_deepcheck)
     file_row_check = ft.Row([file_button_check,file_button_deepcheck])

@@ -3,8 +3,12 @@ services:
   - type: web
     name: skedtool
     runtime: docker
+    repo: https://github.com/yuheiyta/SKEDTool
+    branch: main
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     plan: free
-    autoDeploy: false
+    autoDeployTrigger: "off"
     healthCheckPath: /
     envVars:
       - key: FLET_FORCE_WEB_SERVER

@@ -1,7 +1,6 @@
 from astronomy_helpers import simbad_coordinate
 from schedule_validation import validate_schedule
-from iers_status import check_iers
-from schedule_io import show_paste, show_outputs
+from schedule_io import show_paste, show_outputs, prepare_iers
 import SKEDTools_vex
 import os,glob,subprocess
 import flet as ft
@@ -461,7 +460,7 @@ def main(page: Page):
     #@profile
     @error_handler     
     def skd_azel(e):
-        iers_text.value = check_iers(validate_schedule(vex, vera=True))
+        prepare_iers(page, iers_text, validate_schedule(vex, vera=True))
         def check_slewspeed(altaz_p,altaz_i,sked_antenna,timed):
             if(abs(sked_antenna.lim[0][1]-sked_antenna.lim[0][0])< 360.):
                 if(np.abs((altaz_p.az.deg - altaz_i.az.deg)/float(sked_antenna.rate[0])) > (timed).sec/60.):
@@ -556,7 +555,7 @@ def main(page: Page):
     #@profile
     @error_handler        
     def lst_elplot(e):
-        iers_text.value = check_iers(validate_schedule(vex, vera=True))
+        prepare_iers(page, iers_text, validate_schedule(vex, vera=True))
         srcnames=[]
         for i in selected_src:
             srcnames.append(vex.source.list[i-1].name)
@@ -569,7 +568,7 @@ def main(page: Page):
 
     @error_handler           
     def ut_elplot(e):
-        iers_text.value = check_iers(validate_schedule(vex, vera=True))
+        prepare_iers(page, iers_text, validate_schedule(vex, vera=True))
         srcnames=[]
         for i in selected_src:
             srcnames.append(vex.source.list[i-1].name)
@@ -580,7 +579,7 @@ def main(page: Page):
         
     @error_handler
     def jst_elplot(e):
-        iers_text.value = check_iers(validate_schedule(vex, vera=True))
+        prepare_iers(page, iers_text, validate_schedule(vex, vera=True))
         srcnames=[]
         for i in selected_src:
             srcnames.append(vex.source.list[i-1].name)
@@ -591,7 +590,7 @@ def main(page: Page):
  
     @error_handler
     def skd_uvplot(e):
-        iers_text.value = check_iers(validate_schedule(vex, vera=True))
+        prepare_iers(page, iers_text, validate_schedule(vex, vera=True))
         if(skd_uvplot_sta.value != ""):
             antcodes = [antcode.strip() for antcode in skd_uvplot_sta.value.split(",") if antcode.strip()]
             fig = vex.uvplot(skd_uvplot_srcname.value, antcodes=antcodes)
@@ -686,14 +685,8 @@ def main(page: Page):
     @error_handler    
     def vex_check(e):
         scans = validate_schedule(vex, vera=True)
-        iers_text.value = "IERSデータを確認しています…"
         file_output_text.value = ""
-        page.update()
-        try:
-            iers_text.value = check_iers(scans)
-        except Exception as error:
-            iers_text.value = str(error)
-            raise
+        prepare_iers(page, iers_text, scans)
         file_output_text.value="Processing..."
         page.update()
         msg = vex.check()
@@ -704,14 +697,8 @@ def main(page: Page):
     @error_handler     
     def vex_deepcheck(e):
         scans = validate_schedule(vex, vera=True)
-        iers_text.value = "IERSデータを確認しています…"
         file_output_text.value = ""
-        page.update()
-        try:
-            iers_text.value = check_iers(scans)
-        except Exception as error:
-            iers_text.value = str(error)
-            raise
+        prepare_iers(page, iers_text, scans)
         file_output_text.value="Processing..."
         page.update()
         msg, fig = vex.azelplot()
@@ -957,7 +944,7 @@ def main(page: Page):
     txt_space = ft.Text("",size=3)
     
     file_txt_check = ft.Text("Validation")
-    iers_text = ft.Text("IERS: 未確認（Check時に取得・更新します）", selectable=True)
+    iers_text = ft.Text("IERS: Not checked (checked before validation and plots)", selectable=True)
     file_button_check = ft.ElevatedButton(text="Check",on_click=vex_check)
     file_button_deepcheck = ft.ElevatedButton(text="deepCheck",on_click=vex_deepcheck)
     #file_row_check = ft.Row([file_button_check,file_button_deepcheck])

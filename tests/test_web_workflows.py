@@ -99,10 +99,10 @@ class WorkflowTests(unittest.TestCase):
                 return np.zeros(2), np.zeros(2), np.array([status, status])
         status = iers.FROM_IERS_A_PREDICTION
         with patch('iers_status.iers.IERS_Auto.open', return_value=FakeTable()):
-            self.assertIn('予測値', check_iers(scans))
+            self.assertIn('predicted values', check_iers(scans))
             status = iers.TIME_BEYOND_IERS_RANGE
-            with self.assertRaisesRegex(ValueError, '範囲外'):
+            with self.assertRaisesRegex(ValueError, 'outside the IERS data range'):
                 check_iers(scans)
         with patch('iers_status.iers.IERS_Auto.open', side_effect=OSError('offline')):
-            with self.assertRaisesRegex(ValueError, '取得・更新に失敗'):
+            with self.assertRaisesRegex(ValueError, 'Failed to retrieve or update'):
                 check_iers(scans)

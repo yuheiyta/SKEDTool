@@ -3,6 +3,29 @@ from pathlib import Path
 import flet as ft
 
 from schedule_text import normalize_text
+from iers_status import check_iers
+
+
+def prepare_iers(page, status, scans):
+    """Show acquisition status on any tab before blocking on network access."""
+    message = 'Checking IERS data; downloading if needed. Please wait...'
+    status.value = message
+    dialog = ft.AlertDialog(modal=True, title=ft.Text('IERS data'),
+        content=ft.Column([ft.ProgressRing(), ft.Text(message)], tight=True))
+    previous = getattr(page, 'dialog', None)
+    page.dialog = dialog
+    dialog.open = True
+    page.update()
+    try:
+        status.value = check_iers(scans)
+        return status.value
+    except Exception as error:
+        status.value = str(error)
+        raise
+    finally:
+        dialog.open = False
+        page.update()
+        page.dialog = previous
 
 
 def show_outputs(page, outputs):
