@@ -1,0 +1,70 @@
+$SOURCE
+def 3C84;
+     source_name = 3C84;
+     ra = 03h19m48.160106s;
+     dec = +41d30'42.10328";
+     ref_coord_frame = J2000;
+enddef;
+
+def NRAO150;
+     source_name = NRAO150;
+     ra = 03h59m29.747263s;
+     dec = +50d57'50.16149";
+     ref_coord_frame = J2000;
+enddef;
+
+def PKS0420;
+     source_name = PKS0420;
+     ra = 04h23m15.800728s;
+     dec = -01d20'33.06543";
+     ref_coord_frame = J2000;
+enddef;
+
+def OJ287;
+     source_name = OJ287;
+     ra = 08h54m48.874924s;
+     dec = +20d06'30.64088";
+     ref_coord_frame = J2000;
+enddef;
+
+def 4C39.25;
+     source_name = 4C39.25;
+     ra = 09h27m3.013906s;
+     dec = 39d02'20.85196";
+     ref_coord_frame = J2000;
+enddef;
+
+def 3C273;
+     source_name = 3C273;
+     ra = 12h29m6.699728s;
+     dec = 02d03'08.59824";
+     ref_coord_frame = J2000;
+enddef;
+
+def 3C279;
+     source_name = 3C279;
+     ra = 12h56m11.166507s;
+     dec = -05d47'21.52481";
+     ref_coord_frame = J2000;
+enddef;
+
+def NRAO530;
+     source_name = NRAO530;
+     ra = 17h33m02.705785s;
+     dec = -13d04'49.54820";
+     ref_coord_frame = J2000;
+enddef;
+
+def PKS1741;
+     source_name = PKS1741;
+     ra = 17h43m58.856142s;
+     dec = -03d50'04.61667";
+     ref_coord_frame = J2000;
+enddef;
+
+def 3C454.3;
+     source_name = 3C454.3;
+     ra = 22h53m57.747938s;
+     dec = +16d08'53.56088";
+     ref_coord_frame = J2000;
+enddef;

@@ -1,0 +1,14 @@
+$EXPER;
+def r24125a;
+     target_correlator = VERA;
+     exper_name = r24125a;
+     exper_description = your project name;
+     exper_nominal_start = 2024y125d00h00m00s;
+     exper_nominal_stop  = 2024y125d01h38m00s;
+     PI_name = your name ;
+     PI_email = your email address;
+     contact_name = vera naoj;
+     contact_email = vera@vera.nao.ac.jp;
+     scheduler_name = vlbi naoj;
+     scheduler_email = vlbi@vera.nao.ac.jp;
+enddef;

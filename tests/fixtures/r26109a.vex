@@ -1,0 +1,564 @@
+*******************************************************************************
+VEX_rev = 1.5B;
+*
+* prep = 150;
+* beam = single: K;
+* att =   A: level: 30: 45: 45;
+* att =   B: none;
+* att =   A: none;
+* att =   B: level: 30: 45: 45;
+*
+* 8Gbps (2GbpsX4IF, Single-B, 22GHz, QSO)
+* rec =   S3: 21459MHz: 512MHz: B: ADS3K: VSREC: 36;
+* rec =   S4: 21971MHz: 512MHz: B: ADS3K: VSREC: 37;
+* rec =   S5: 22483MHz: 512MHz: B: ADS3K: VSREC: 38;
+* rec =   S6: 22995MHz: 512MHz: B: ADS3K: VSREC: 39;
+* bunch = S3: 21459MHz: 512MHz:    1024:  512: 0.8: 1.0: 1.0;
+* bunch = S4: 21971MHz: 512MHz:    1024:  512: 0.8: 1.0: 1.0;
+* bunch = S5: 22483MHz: 512MHz:    1024:  512: 0.8: 1.0: 1.0;
+* bunch = S6: 22995MHz: 512MHz:    1024:  512: 0.8: 1.0: 1.0;
+*------------------------------------------------------------------------------
+$GLOBAL;
+*
+    ref $EXPER = r26109a;
+    ref $PROCEDURES = STD_1BEAM;
+*
+*------------------------------------------------------------------------------
+$EXPER;
+*
+def r25160a;
+     exper_name = r26109a;
+     exper_description = "Calibrator of Sgr A at 22GHz (8Gbps)";
+     PI_name = "Yuhei Iwata";
+     PI_email = yuhei.iwata@nao.ac.jp;
+     exper_nominal_start=2026y109d14h50m00s;
+     exper_nominal_stop=2026y109d21h34m00s;
+*
+     target_correlator = VERA;
+*
+*    integr_time    : 2.0 s
+*    number_channels: 1024
+*    number_antenna : 4
+*    cross_polarize : No
+*    weight_func    : UNIFORM
+*    distrib_medium : NONE
+*    distrib_format : FITS
+*    source_pos_cat : STANDARD
+*    distribute_to  :
+*                     
+*                     
+*                     
+*                     
+*
+enddef;
+*------------------------------------------------------------------------------
+$MODE;
+*
+def GEO1S;
+    ref $PROCEDURES = PROC1:Vm:Vr:Vo:Vs;
+    ref $FREQ = GEO1SK:Vm:Vr:Vo:Vs;
+    ref $IF = IF_K:Vm:Vr:Vo:Vs;
+    ref $BBC = BBC1:Vm:Vr:Vo:Vs;
+enddef;
+*
+* SecZ (opacity) measurement before scan
+* Set this for the 1st scan
+def GEO1S_F;
+     ref $PROCEDURES = PROC3:Vm:Vr:Vo:Vs;
+     ref $FREQ = GEO1SK:Vm:Vr:Vo:Vs;
+     ref $IF = IF_K:Vm:Vr:Vo:Vs;
+     ref $BBC = BBC1:Vm:Vr:Vo:Vs;
+enddef;
+*
+* SecZ (opacity) measurement after scan
+* Set this for the final scan
+def GEO1S_L;
+     ref $PROCEDURES = PROC4:Vm:Vr:Vo:Vs;
+     ref $FREQ = GEO1SK:Vm:Vr:Vo:Vs;
+     ref $IF = IF_K:Vm:Vr:Vo:Vs;
+     ref $BBC = BBC1:Vm:Vr:Vo:Vs;
+enddef;
+*
+* Special setup for VERA fast switching
+def GEO1S_SSW;
+     ref $PROCEDURES = PROC10:Vm:Vr:Vo:Vs;
+     ref $FREQ = GEO1SK:Vm:Vr:Vo:Vs;
+     ref $IF = IF_K:Vm:Vr:Vo:Vs;
+     ref $BBC = BBC1:Vm:Vr:Vo:Vs;
+enddef;
+*
+
+*------------------------------------------------------------------------------
+$STATION;
+*
+def Vm;
+    ref $SITE = VERAMZSW;
+    ref $ANTENNA = VERA_MIZUSAW;
+    ref $DAS = VERA_DIR2K;
+enddef;
+*
+def Vr;
+    ref $SITE = VERAIRKI;
+    ref $ANTENNA = VERA_IRIKI;
+    ref $DAS = VERA_DIR2K;
+enddef;
+*
+def Vo;
+    ref $SITE = VERAOGSW;
+    ref $ANTENNA = VERA_OGASAWA;
+    ref $DAS = VERA_DIR2K;
+enddef;
+*
+def Vs;
+    ref $SITE = VERAISGK;
+    ref $ANTENNA = VERA_ISHIGAK;
+    ref $DAS = VERA_DIR2K;
+enddef;
+*
+*------------------------------------------------------------------------------
+$PROCEDURES;
+*
+def STD_1BEAM;
+     tape_change =  420 sec;
+* add for VERA
+     beam1 = on;
+     beam2 = off;
+enddef;
+*
+def PROC1;
+     preob_cal = on : 20 sec : R_SKY;
+enddef;
+*
+def PROC2;
+     preob_cal = on : 120 sec : TAPE_C;
+     preob_cal = on : 20 sec : R_SKY;
+enddef;
+*
+def PROC2/KVN;
+     preob_cal = on : 20 sec : R_SKY;
+     preob_cal = on : 120 sec : Cross;
+enddef;
+*
+def PROC3;
+     preob_cal = on : 30 sec : R_SKY;
+     preob_cal = on : 10 sec : SECZ : 600 sec ;
+     postob_cal = on : 30 sec : R_SKY;
+enddef;
+*
+def PROC3/KVN;
+     preob_cal = on : 120 sec : SECZ ;
+     preob_cal = on : 120 sec : Cross;
+enddef;
+*
+def PROC4;
+     preob_cal = on : 20 sec : R_SKY;
+     postob_cal = on : 20 sec : R_SKY;
+     postob_cal = on : 30 sec : SECZ : 60 sec ;
+enddef;
+*
+def PROC5;
+enddef;
+*
+def PROC10;
+* 1-beam position switch, source1 32sec slew 8sec source2 12sec slew 8sec
+*      use one RX (RX-A or RX-B) for both source1 and source2
+*
+*     preob_cal = on : 20 sec : R_SKY;
+*     midob_cal  = on :   8 sec : SSW : off : 32 sec : 12 sec;
+     midob_cal  = on :   10 sec : SSW : off : 12 sec : 20 sec;
+*t1 = antenna slewing; t2 = tracking time for source 1; t3=tracking time for source 2
+*off = use the same beam for sources 1 and 2
+enddef;
+*------------------------------------------------------------------------------
+$SITE;
+*
+def VERAMZSW;
+    site_type = fixed;
+    site_name = VERAMZSW;
+    site_ID = Vm;
+    site_position = -3857245.057 m: 3108782.883 m: 4003899.155 m;
+enddef;
+*
+def VERAIRKI;
+    site_type = fixed;
+    site_name = VERAIRKI;
+    site_ID = Vr;
+    site_position = -3521719.909 m: 4132174.673 m: 3336994.093 m;
+enddef;
+*
+def VERAOGSW;
+    site_type = fixed;
+    site_name = VERAOGSW;
+    site_ID = Vo;
+    site_position = -4491068.320 m: 3481545.279 m: 2887399.830 m;
+enddef;
+*
+def VERAISGK;
+    site_type = fixed;
+    site_name = VERAISGK;
+    site_ID = Vs;
+    site_position = -3263995.306 m: 4808056.386 m: 2619948.552 m;
+enddef;
+*
+*------------------------------------------------------------------------------
+$ANTENNA;
+def VERA_MIZUSAW;
+    antenna_diam = 20m;
+    antenna_name = VERA_MIZUSAW;
+    axis_type = az : el;
+    axis_offset =     0.0 m;
+    antenna_motion = az :  120.0 deg/min : 1 sec;
+    antenna_motion = el :  120.0 deg/min : 1 sec;
+    pointing_sector = &ccw: az : -90 :   0 : el : 5 : 85 ;
+    pointing_sector = &n  : az :   0 : 360 : el : 5 : 85 ;
+    pointing_sector = &cw : az : 360 : 450 : el : 5 : 85 ;
+    multi_beam_number = 2;
+    multi_beam_type = VERA;
+    beam_separation = 0.32 deg: 2.2 deg: 0.03 deg/sec;
+    field_rotation = -270 deg: 270 deg: 3 deg/sec;
+enddef;
+*
+def VERA_IRIKI;
+    antenna_diam = 20m;
+    antenna_name = VERA_IRIKI;
+    axis_type = az : el;
+    axis_offset =     0.0 m;
+    antenna_motion = az :  120.0 deg/min : 1 sec;
+    antenna_motion = el :  120.0 deg/min : 1 sec;
+    pointing_sector = &ccw: az : -90 :   0 : el : 5 : 85 ;
+    pointing_sector = &n  : az :   0 : 360 : el : 5 : 85 ;
+    pointing_sector = &cw : az : 360 : 450 : el : 5 : 85 ;
+    multi_beam_number = 2;
+    multi_beam_type = VERA;
+    beam_separation = 0.32 deg: 2.2 deg: 0.03 deg/sec;
+    field_rotation = -270 deg: 270 deg: 3 deg/sec;
+enddef;
+*
+def VERA_OGASAWA;
+    antenna_diam = 20m;
+    antenna_name = VERA_OGASAWA;
+    axis_type = az : el;
+    axis_offset =     0.0 m;
+    antenna_motion = az :  120.0 deg/min : 1 sec;
+    antenna_motion = el :  120.0 deg/min : 1 sec;
+    pointing_sector = &ccw: az : -90 :   0 : el : 5 : 85 ;
+    pointing_sector = &n  : az :   0 : 360 : el : 5 : 85 ;
+    pointing_sector = &cw : az : 360 : 450 : el : 5 : 85 ;
+    multi_beam_number = 2;
+    multi_beam_type = VERA;
+    beam_separation = 0.32 deg: 2.2 deg: 0.03 deg/sec;
+    field_rotation = -270 deg: 270 deg: 3 deg/sec;
+enddef;
+*
+def VERA_ISHIGAK;
+    antenna_diam = 20m;
+    antenna_name = VERA_ISHIGAK;
+    axis_type = az : el;
+    axis_offset =     0.0 m;
+    antenna_motion = az :  120.0 deg/min : 1 sec;
+    antenna_motion = el :  120.0 deg/min : 1 sec;
+    pointing_sector = &ccw: az : -90 :   0 : el : 5 : 85 ;
+    pointing_sector = &n  : az :   0 : 360 : el : 5 : 85 ;
+    pointing_sector = &cw : az : 360 : 450 : el : 5 : 85 ;
+    multi_beam_number = 2;
+    multi_beam_type = VERA;
+    beam_separation = 0.32 deg: 2.2 deg: 0.03 deg/sec;
+    field_rotation = -270 deg: 270 deg: 3 deg/sec;
+enddef;
+*
+*------------------------------------------------------------------------------
+$DAS;
+*
+* tape_motion continuous
+def VERA_DIR2K;
+    record_transport_type = DIR2K_1024Mbps;
+    electronics_rack_type = VERA;
+    number_drives = 1;
+    tape_length = 81 min;
+    tape_motion = continuous : 20 sec;
+enddef;
+*
+*------------------------------------------------------------------------------
+$FREQ;
+*
+def GEO1SK;
+*     * Setting for Single beam mode
+*     * 22.971GHz
+*     * BBCLO = 5.171 GHz
+     sample_rate = 512.000 Ms/sec;
+     chan_def = &R1: 22099.000000 MHz: L: 16.00 MHz: &S01 : &BBCa : &NoCal;
+     chan_def = &R1: 22099.000000 MHz: U: 16.00 MHz: &S02 : &BBCa : &NoCal;
+     chan_def = &R1: 22131.000000 MHz: L: 16.00 MHz: &S03 : &BBCa : &NoCal;
+     chan_def = &R1: 22131.000000 MHz: U: 16.00 MHz: &S04 : &BBCa : &NoCal;
+     chan_def = &R1: 22163.000000 MHz: L: 16.00 MHz: &S05 : &BBCa : &NoCal;
+     chan_def = &R1: 22163.000000 MHz: U: 16.00 MHz: &S06 : &BBCa : &NoCal;
+     chan_def = &R1: 22195.000000 MHz: L: 16.00 MHz: &S07 : &BBCa : &NoCal;
+     chan_def = &R1: 22195.000000 MHz: U: 16.00 MHz: &S08 : &BBCa : &NoCal;
+     chan_def = &R1: 22227.000000 MHz: L: 16.00 MHz: &S09 : &BBCa : &NoCal;
+     chan_def = &R1: 22227.000000 MHz: U: 16.00 MHz: &S10 : &BBCa : &NoCal;
+     chan_def = &R1: 22259.000000 MHz: L: 16.00 MHz: &S11 : &BBCa : &NoCal;
+     chan_def = &R1: 22259.000000 MHz: U: 16.00 MHz: &S12 : &BBCa : &NoCal;
+     chan_def = &R1: 22391.000000 MHz: L: 16.00 MHz: &S13 : &BBCa : &NoCal;
+     chan_def = &R1: 22391.000000 MHz: U: 16.00 MHz: &S14 : &BBCa : &NoCal;
+     chan_def = &R1: 22323.000000 MHz: L: 16.00 MHz: &S15 : &BBCa : &NoCal;
+     chan_def = &R1: 22323.000000 MHz: U: 16.00 MHz: &S16 : &BBCa : &NoCal;
+enddef;
+*
+*def  OCTAD;
+*     * DBBCmode = OCTAD-1B8G
+*     * 22 GHz single beam
+*     * BBCLO = 5.171 GHz
+*     sample_rate = 512.000 Ms/sec;
+*     chan_def = &R1: 21459.000000 MHz: U: 512.00 MHz: &S01 : &BBCa : &NoCal; *LCP
+*     chan_def = &R1: 21971.000000 MHz: U: 512.00 MHz: &S02 : &BBCa : &NoCal; *LCP
+*     chan_def = &R1: 22483.000000 MHz: U: 512.00 MHz: &S03 : &BBCa : &NoCal; *LCP
+*     chan_def = &R1: 22995.000000 MHz: U: 512.00 MHz: &S04 : &BBCa : &NoCal; *LCP
+*enddef;
+*
+*------------------------------------------------------------------------------
+$IF;
+*
+def IF_K;
+    if_def = &IF_R1: B1: L: 16800.0 MHz: U ;
+enddef;
+*
+def IF_Q;
+     if_def = &IF_R1: B1: L: 37500.0 MHz: U ; 
+enddef;
+*
+def IF_C67;
+     if_def = &IF_R1: B1: L: 0.0 MHz: U ; 
+enddef;
+*
+*------------------------------------------------------------------------------
+$BBC;
+*
+def BBC1;
+    BBC_assign = &BBCa:  1: &IF_R1;
+enddef;
+*
+*------------------------------------------------------------------------------
+$SOURCE;
+def NRAO530;
+     source_name = NRAO530;
+     ra = 17h33m02.7057850s;
+     dec = -13d04'49.548200";
+     ref_coord_frame = J2000;
+enddef;
+def N3;
+     source_name = N3;
+     ra = 17h46m21.0400000s;
+     dec = -28d50'03.200000";
+     ref_coord_frame = J2000;
+enddef;
+def SGRA;
+     source_name = SGRA;
+     ra = 17h45m40.0340800s;
+     dec = -29d00'28.246800";
+     ref_coord_frame = J2000;
+enddef;
+def SGRB2;
+     source_name = SGRB2;
+     ra = 17h47m20.1800000s;
+     dec = -28d23'03.880000";
+     ref_coord_frame = J2000;
+enddef;
+*
+def J1745-28;
+     source_name = J1745-28;
+     ra = 17h45m52.495737s;
+     dec = -28d20'26.28915";
+     ref_coord_frame = J2000;
+enddef;
+*
+*------------------------------------------------------------------------------
+$SCHED;
+*
+scan No00001;
+     start = 2026y109d15h10m00s;
+     mode = GEO1S_F;
+     source1 = NRAO530;
+     station = Vm : 0 sec : 300 sec :     0 sec:   :       : :    : 1;
+     station = Vr : 0 sec : 300 sec :     0 sec:   :       : :    : 1;
+     station = Vo : 0 sec : 300 sec :     0 sec:   :       : :    : 1;
+     station = Vs : 0 sec : 300 sec :     0 sec:   :       : :    : 1;
+endscan;
+*
+scan No00002;
+     start = 2026y109d15h16m00s;
+     mode = GEO1S;
+     source1 = SGRB2;
+     station = Vm : 0 sec : 180 sec :     0 sec:   :       : :    : 1;
+     station = Vr : 0 sec : 180 sec :     0 sec:   :       : :    : 1;
+     station = Vo : 0 sec : 180 sec :     0 sec:   :       : :    : 1;
+     station = Vs : 0 sec : 180 sec :     0 sec:   :       : :    : 1;
+endscan;
+*
+scan No00003;
+     start = 2026y109d15h20m00s;
+     mode = GEO1S_SSW;
+     source1 = SGRA;
+     source2 = N3;
+     station = Vm : 0 sec : 2340 sec :     0 sec:   :       : :    : 1;
+     station = Vr : 0 sec : 2340 sec :     0 sec:   :       : :    : 1;
+     station = Vo : 0 sec : 2340 sec :     0 sec:   :       : :    : 1;
+     station = Vs : 0 sec : 2340 sec :     0 sec:   :       : :    : 1;
+endscan;
+*
+scan No00004;
+     start = 2026y109d16h00m00s;
+     mode = GEO1S_SSW;
+     source1 = J1745-28;
+     source2 = N3;
+     station = Vm : 0 sec : 2340 sec :     0 sec:   :       : :    : 1;
+     station = Vr : 0 sec : 2340 sec :     0 sec:   :       : :    : 1;
+     station = Vo : 0 sec : 2340 sec :     0 sec:   :       : :    : 1;
+     station = Vs : 0 sec : 2340 sec :     0 sec:   :       : :    : 1;
+endscan;
+*
+scan No00005;
+     start = 2026y109d16h40m00s;
+     mode = GEO1S;
+     source1 = NRAO530;
+     station = Vm : 0 sec : 300 sec :     0 sec:   :       : :    : 1;
+     station = Vr : 0 sec : 300 sec :     0 sec:   :       : :    : 1;
+     station = Vo : 0 sec : 300 sec :     0 sec:   :       : :    : 1;
+     station = Vs : 0 sec : 300 sec :     0 sec:   :       : :    : 1;
+endscan;
+*
+scan No00006;
+     start = 2026y109d16h46m00s;
+     mode = GEO1S;
+     source1 = SGRB2;
+     station = Vm : 0 sec : 180 sec :     0 sec:   :       : :    : 1;
+     station = Vr : 0 sec : 180 sec :     0 sec:   :       : :    : 1;
+     station = Vo : 0 sec : 180 sec :     0 sec:   :       : :    : 1;
+     station = Vs : 0 sec : 180 sec :     0 sec:   :       : :    : 1;
+endscan;
+*
+scan No00007;
+     start = 2026y109d16h50m00s;
+     mode = GEO1S_SSW;
+     source1 = SGRA;
+     source2 = N3;
+     station = Vm : 0 sec : 2340 sec :     0 sec:   :       : :    : 1;
+     station = Vr : 0 sec : 2340 sec :     0 sec:   :       : :    : 1;
+     station = Vo : 0 sec : 2340 sec :     0 sec:   :       : :    : 1;
+     station = Vs : 0 sec : 2340 sec :     0 sec:   :       : :    : 1;
+endscan;
+*
+scan No00008;
+     start = 2026y109d17h30m00s;
+     mode = GEO1S_SSW;
+     source1 = J1745-28;
+     source2 = N3;
+     station = Vm : 0 sec : 2340 sec :     0 sec:   :       : :    : 1;
+     station = Vr : 0 sec : 2340 sec :     0 sec:   :       : :    : 1;
+     station = Vo : 0 sec : 2340 sec :     0 sec:   :       : :    : 1;
+     station = Vs : 0 sec : 2340 sec :     0 sec:   :       : :    : 1;
+endscan;
+*
+scan No00009;
+     start = 2026y109d18h10m00s;
+     mode = GEO1S;
+     source1 = NRAO530;
+     station = Vm : 0 sec : 300 sec :     0 sec:   :       : :    : 1;
+     station = Vr : 0 sec : 300 sec :     0 sec:   :       : :    : 1;
+     station = Vo : 0 sec : 300 sec :     0 sec:   :       : :    : 1;
+     station = Vs : 0 sec : 300 sec :     0 sec:   :       : :    : 1;
+endscan;
+*
+scan No00010;
+     start = 2026y109d18h16m00s;
+     mode = GEO1S;
+     source1 = SGRB2;
+     station = Vm : 0 sec : 180 sec :     0 sec:   :       : :    : 1;
+     station = Vr : 0 sec : 180 sec :     0 sec:   :       : :    : 1;
+     station = Vo : 0 sec : 180 sec :     0 sec:   :       : :    : 1;
+     station = Vs : 0 sec : 180 sec :     0 sec:   :       : :    : 1;
+endscan;
+*
+scan No00011;
+     start = 2026y109d18h20m00s;
+     mode = GEO1S_SSW;
+     source1 = SGRA;
+     source2 = N3;
+     station = Vm : 0 sec : 2340 sec :     0 sec:   :       : :    : 1;
+     station = Vr : 0 sec : 2340 sec :     0 sec:   :       : :    : 1;
+     station = Vo : 0 sec : 2340 sec :     0 sec:   :       : :    : 1;
+     station = Vs : 0 sec : 2340 sec :     0 sec:   :       : :    : 1;
+endscan;
+*
+scan No00012;
+     start = 2026y109d19h00m00s;
+     mode = GEO1S_SSW;
+     source1 = J1745-28;
+     source2 = N3;
+     station = Vm : 0 sec : 2340 sec :     0 sec:   :       : :    : 1;
+     station = Vr : 0 sec : 2340 sec :     0 sec:   :       : :    : 1;
+     station = Vo : 0 sec : 2340 sec :     0 sec:   :       : :    : 1;
+     station = Vs : 0 sec : 2340 sec :     0 sec:   :       : :    : 1;
+endscan;
+*
+scan No00013;
+     start = 2026y109d19h40m00s;
+     mode = GEO1S;
+     source1 = NRAO530;
+     station = Vm : 0 sec : 300 sec :     0 sec:   :       : :    : 1;
+     station = Vr : 0 sec : 300 sec :     0 sec:   :       : :    : 1;
+     station = Vo : 0 sec : 300 sec :     0 sec:   :       : :    : 1;
+     station = Vs : 0 sec : 300 sec :     0 sec:   :       : :    : 1;
+endscan;
+*
+scan No00014;
+     start = 2026y109d19h46m00s;
+     mode = GEO1S;
+     source1 = SGRB2;
+     station = Vm : 0 sec : 180 sec :     0 sec:   :       : :    : 1;
+     station = Vr : 0 sec : 180 sec :     0 sec:   :       : :    : 1;
+     station = Vo : 0 sec : 180 sec :     0 sec:   :       : :    : 1;
+     station = Vs : 0 sec : 180 sec :     0 sec:   :       : :    : 1;
+endscan;
+*
+scan No00015;
+     start = 2026y109d19h50m00s;
+     mode = GEO1S_SSW;
+     source1 = SGRA;
+     source2 = N3;
+     station = Vm : 0 sec : 2340 sec :     0 sec:   :       : :    : 1;
+     station = Vr : 0 sec : 2340 sec :     0 sec:   :       : :    : 1;
+     station = Vo : 0 sec : 2340 sec :     0 sec:   :       : :    : 1;
+     station = Vs : 0 sec : 2340 sec :     0 sec:   :       : :    : 1;
+endscan;
+*
+scan No00016;
+     start = 2026y109d20h30m00s;
+     mode = GEO1S_SSW;
+     source1 = J1745-28;
+     source2 = N3;
+     station = Vm : 0 sec : 2340 sec :     0 sec:   :       : :    : 1;
+     station = Vr : 0 sec : 2340 sec :     0 sec:   :       : :    : 1;
+     station = Vo : 0 sec : 2340 sec :     0 sec:   :       : :    : 1;
+     station = Vs : 0 sec : 2340 sec :     0 sec:   :       : :    : 1;
+endscan;
+*
+scan No00017;
+     start = 2026y109d21h10m00s;
+     mode = GEO1S;
+     source1 = NRAO530;
+     station = Vm : 0 sec : 300 sec :     0 sec:   :       : :    : 1;
+     station = Vr : 0 sec : 300 sec :     0 sec:   :       : :    : 1;
+     station = Vo : 0 sec : 300 sec :     0 sec:   :       : :    : 1;
+     station = Vs : 0 sec : 300 sec :     0 sec:   :       : :    : 1;
+endscan;
+*
+scan No00018;
+     start = 2026y109d21h16m00s;
+     mode = GEO1S_L;
+     source1 = SGRB2;
+     station = Vm : 0 sec : 180 sec :     0 sec:   :       : :    : 1;
+     station = Vr : 0 sec : 180 sec :     0 sec:   :       : :    : 1;
+     station = Vo : 0 sec : 180 sec :     0 sec:   :       : :    : 1;
+     station = Vs : 0 sec : 180 sec :     0 sec:   :       : :    : 1;
+endscan;
+*
