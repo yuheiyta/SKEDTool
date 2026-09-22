@@ -8,3 +8,6 @@ __pycache__/
 /drgconv/
 /mk_xml.py
 /drgconv*.out
+
+# Locally generated observing templates; publish only after reviewing source permissions.
+/custom_templates/

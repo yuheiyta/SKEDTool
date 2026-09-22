@@ -51,8 +51,8 @@ def show_outputs(page, outputs):
     page.update()
 
 
-def show_paste(page, apply):
-    field = ft.TextField(label='DRG / VEX テキストを貼り付け', multiline=True)
+def show_paste(page, apply, title='テキストから読み込み', label='DRG / VEX テキストを貼り付け'):
+    field = ft.TextField(label=label, multiline=True)
     status = ft.Text('')
     def submit(e):
         try:
@@ -65,7 +65,7 @@ def show_paste(page, apply):
     def close(e):
         dialog.open = False
         page.update()
-    dialog = ft.AlertDialog(title=ft.Text('テキストから読み込み'),
+    dialog = ft.AlertDialog(title=ft.Text(title),
         content=ft.Container(ft.Column([field, status], scroll=ft.ScrollMode.ALWAYS),
                              width=700, height=450),
         actions=[ft.TextButton('Apply', on_click=submit), ft.TextButton('Close', on_click=close)])

@@ -1,0 +1,21 @@
+{
+  "AC_C_VERA4S_2G_32MHz16IF_NEW": "C_Cont_1B_SingP_2G",
+  "AC_K_GEO1D_1G_pol": "K_Cont_1B_FullP_1G",
+  "AC_K_GEO1K_1G": "K_Cont_1B_SingP_1G",
+  "AC_K_GEO1S_16G_pol_NEW": "K_Cont_1B_FullP_16G",
+  "AC_K_VERA4S_2G_32MHz16IF_NEW": "K_Cont_1B_SingP_2G",
+  "AC_K_VERA4S_2G_32MHz16IF_pol_NEW": "K_Cont_1B_FullP_2G",
+  "AC_Q_GEO1D_1G_pol": "Q_Cont_1B_FullP_1G",
+  "AC_Q_GEO1D_4G_pol": "Q_Cont_1B_FullP_4G",
+  "AC_Q_GEO1S_16G_pol_NEW": "Q_Cont_1B_FullP_16G",
+  "AC_Q_VERA4S_2G_32MHz16IF_NEW": "Q_Cont_1B_SingP_2G",
+  "AM_K_GEO1S_2G_NEW": "K_Maser_1B_SingP_2G",
+  "DCC_K_VERA7_16G_NEW": "K_Cont_2B_SingP_16G",
+  "DMC_K_VERA7_1G": "K_Maser_2B_SingP_1G",
+  "DMC_K_VERA7_4G": "K_Maser_2B_SingP_4G",
+  "DMC_Q_VERA7SIO2_4G": "Q_Maser_2B_SingP_4G",
+  "AM_C_GEO1S_2Ghigh_NEW": "C_Maser_1B_SingP_2G_HighRes",
+  "AM_C_GEO1S_2Glow_NEW": "C_Maser_1B_SingP_2G_LowRes",
+  "AC_KQ_VERA4D_1G_NEW": "KQ_Cont_1B_SingP_1G",
+  "DMC_K_VERA7SIO2_12G16G_NEW": "Q_Cont_2B_SingP_12G16G"
+}

@@ -1,8 +1,8 @@
 from astronomy_helpers import simbad_coordinate
 from schedule_validation import validate_schedule
 from schedule_io import show_paste, show_outputs, prepare_iers
+from vex_templates import CUSTOM_DIR, load_template, apply_template, parse_template
 import SKEDTools_vex
-import os,glob,subprocess
 import flet as ft
 from flet import Page
 from flet.matplotlib_chart import MatplotlibChart
@@ -13,7 +13,6 @@ import matplotlib
 import matplotlib.pyplot as plt
 
 import numpy as np
-import pickle, glob
 from pathlib import Path
 TEMPLATE_DIR = str(Path(__file__).resolve().parent / "template") + "/"
 
@@ -626,60 +625,11 @@ def main(page: Page):
         vex.glob.procedures = beamselect.value
         page.update()
 
-    @error_handler  
+    @error_handler
     def mode_changed(e):
-        headname = modeselect.value.split()[0]
-        freqname = modeselect.value.split()[1] 
-        f_h_name = glob.glob(TEMPLATE_DIR + "head_"+headname+".pickle")
-        with open(f_h_name[0], mode="rb") as f:
-            header = pickle.load(f)
-        vex.header = header
-        f_f_name = glob.glob(TEMPLATE_DIR + "freq_"+headname+".pickle")
-        with open(f_f_name[0], mode="rb") as f:
-            freq = pickle.load(f)
-        vex.freq = freq
-        #f_f_name = glob.glob(TEMPLATE_DIR + "freq_"+freqname.split("_")[-2]+".pickle")
-        #with open(f_f_name[0], mode="rb") as f:
-        #    freq = pickle.load(f)   
-        #vex.freq.list[0] = freq
-        for i,mode in enumerate(vex.mode.list):
-            ll = mode.freq.split(":")
-            ll[0] = vex.freq.list[0].defname
-            mode.freq = ":".join(ll)
-            if("_" in mode.defname):
-                prev_defname = mode.defname.split("_")
-                new_defnamelist = [vex.freq.list[0].defname]
-                for j in range(len(prev_defname)-1):
-                    new_defnamelist.append(prev_defname[j+1])
-                mode.defname = "_".join(new_defnamelist)
-            else:
-                mode.defname = vex.freq.list[0].defname
-        if(headname.split("_")[2]=="1B"):
-            vex.glob.procedures = "STD_1BEAM"
-        elif(headname.split("_")[2]=="2B"):
-            vex.glob.procedures = "STD_2BEAM"
-        else:
-            print("beamselect error")
-        mode_cont_output.value = vex.header.output()+vex.freq.output()+vex.mode.output()
-        mode_update() 
-        page.update()
-
-    @error_handler  
-    def freq_changed(e):
-        vex.freq.list[0] = freqtemps[int(freqselect.value)]
-        for i,mode in enumerate(vex.mode.list):
-            ll = mode.freq.split(":")
-            ll[0] = vex.freq.list[0].defname
-            mode.freq = ":".join(ll)
-            if("_" in mode.defname):
-                prev_defname = mode.defname.split("_")
-                new_defnamelist = [vex.freq.list[0].defname]
-                for j in range(len(prev_defname)-1):
-                    new_defnamelist.append(prev_defname[j+1])
-                mode.defname = "_".join(new_defnamelist)
-            else:
-                mode.defname = vex.freq.list[0].defname
-        freq_cont_output.value = vex.freq.output()+vex.mode.output()
+        apply_template(vex, observing_templates[modeselect.value])
+        skd_mode.value = None
+        mode_update()
         page.update()
 
     @error_handler    
@@ -844,52 +794,17 @@ def main(page: Page):
 
     page.title = "SKED Tool"  # アプリタイトル
     src_index, skd_index, plt_index = 3,4,5
-    defname_tmp = "r24125a"
+    observing_templates = {}
+    for path in sorted(CUSTOM_DIR.glob('*.json')):
+        data = load_template(path.read_text(encoding='utf-8'))
+        if data['name'] in observing_templates:
+            raise ValueError(f"Duplicate template display name: {data['name']}")
+        observing_templates[data['name']] = data
+    default_template = 'K_Cont_1B_SingP_1G'
+    vex, _ = parse_template(observing_templates[default_template]['vex'])
+    vex.exper.list[0].name = 'template'
+    vex.exper.list[0].correlator = 'VERA'
 
-    exper=SKEDTools_vex.VEX_Exper()
-    src=SKEDTools_vex.VEX_Source()
-    sta=SKEDTools_vex.VEX_Station()
-    skd=SKEDTools_vex.VEX_SCHED()
-    globa = SKEDTools_vex.VEX_Global(exper=defname_tmp,procedures="STD_1BEAM")
-    
-    with open(TEMPLATE_DIR + "exper.pickle", mode="rb") as f:
-        exper = pickle.load(f)
-    with open(TEMPLATE_DIR + "mode.pickle", mode="rb") as f:
-        mode = pickle.load(f) 
-    with open(TEMPLATE_DIR + "procedures.pickle", mode="rb") as f:
-        procedures = pickle.load(f)
-    with open(TEMPLATE_DIR + "if.pickle", mode="rb") as f:
-        if_ = pickle.load(f)
-    with open(TEMPLATE_DIR + "bbc.pickle", mode="rb") as f:
-        bbc = pickle.load(f)
-    with open(TEMPLATE_DIR + "station.pickle", mode="rb") as f:
-        station = pickle.load(f)
-    with open(TEMPLATE_DIR + "das.pickle", mode="rb") as f:
-        das = pickle.load(f)
-    with open(TEMPLATE_DIR + "antenna.pickle", mode="rb") as f:
-        antenna = pickle.load(f)
-    with open(TEMPLATE_DIR + "site.pickle", mode="rb") as f:
-        site = pickle.load(f)
-
-    tempmode = TEMPLATE_DIR + "template_mode_list.txt"
-    tempmodes=[]
-    with open(tempmode, "r") as f:
-        for line in f:
-            tempmodes.append(line.strip())
-
-    freqtemps = []
-    freqfilenames = glob.glob(TEMPLATE_DIR + "freq_*")
-    #print(freqfilenames)
-    for freqfilename in freqfilenames:
-        with open(freqfilename, mode="rb") as f:
-            freqtemps.append(pickle.load(f))
-    freq = SKEDTools_vex.VEX_Freq()
-    freq.add(freqtemps[1])
-
-    header =SKEDTools_vex.VEX_Header("")
-
-    vex = SKEDTools_vex.VEX(header = header, glob = globa, exper=exper, mode=mode, procedures=procedures, if_=if_, freq=freq, bbc=bbc, station=station, das=das, source=src, sched=skd, site=site, antenna=antenna)
-    
     veraantlist = ["Vm","Vr","Vo","Vs"]
     dualbeam=False
 
@@ -1145,30 +1060,21 @@ def main(page: Page):
     skd_container = ft.Container(skd_col, alignment=ft.alignment.top_center)
     skd_tab =ft.Tab(text="SCHED",content=skd_container)
 
-    modetable=[]
-    for modetemp in tempmodes:
-        modetempl = modetemp.split()
-        modetable.append(ft.dropdown.Option(key=modetemp, text=modetempl[0]))
+    modetable = [ft.dropdown.Option(key=name, text=name) for name in observing_templates]
+    band_order = {'C': 0, 'K': 1, 'Q': 2, 'KQ': 3}
+    modetable.sort(key=lambda option: (
+        band_order.get(option.text.split('_')[0], 4),
+        tuple(option.text.split('_'))))
     select_txt = ft.Text("Select from templates")
-    modeselect = ft.Dropdown(options=modetable, width=650, on_change=mode_changed, helper_text = "ex) K_Maser_2B_SingP_1G => K band, Maser (& continuum), 2 Beam, Single Polarization, 1 Gbps")
+    modeselect = ft.Dropdown(value=default_template, options=modetable, width=650, on_change=mode_changed, helper_text = "ex) K_Maser_2B_SingP_1G => K band, Maser (& continuum), 2 Beam, Single Polarization, 1 Gbps")
     mode_txt_output = vex.header.output()+vex.freq.output()+vex.mode.output()
     mode_cont_output = ft.Text(mode_txt_output, font_family=outputfont, color=ft.colors.BLACK, selectable=True)
     mode_cont_output_cont = ft.Container(mode_cont_output, bgcolor=ft.colors.WHITE, padding=10, border=ft.border.all(1), alignment=ft.alignment.top_left)
-    mode_col = ft.Column([txt_space,select_txt, modeselect, mode_cont_output_cont], scroll=ft.ScrollMode.ALWAYS)
+    mode_col = ft.Column([txt_space,select_txt, modeselect,
+        ft.Text('Apply templates before adding scans. Display names do not change VEX MODE identifiers.'),
+        mode_cont_output_cont], scroll=ft.ScrollMode.ALWAYS)
     mode_container = ft.Container(mode_col, alignment=ft.alignment.top_center)
     mode_tab =ft.Tab(text="Mode",content=mode_container)
-
-    # freqtable=[]
-    # for i,freqtemp in enumerate(freqtemps):
-    #     freqtable.append(ft.dropdown.Option(key=i, text=freqtemp.defname))
-    # select_txt = ft.Text("Select from templates")
-    # freqselect = ft.Dropdown(options=freqtable, width=200, on_change=freq_changed)
-    # freq_txt_output = vex.freq.output()+vex.mode.output()
-    # freq_cont_output = ft.Text(freq_txt_output, font_family=outputfont, color=ft.colors.BLACK, selectable=True)
-    # freq_cont_output_cont = ft.Container(freq_cont_output, bgcolor=ft.colors.WHITE, padding=10, border=ft.border.all(1), alignment=ft.alignment.top_left)
-    # freq_col = ft.Column([txt_space,select_txt,freqselect, freq_cont_output_cont], scroll=ft.ScrollMode.ALWAYS)
-    # freq_container = ft.Container(freq_col, alignment=ft.alignment.top_center)
-    # freq_tab =ft.Tab(text="FREQ",content=freq_container)
 
     initfig = plt.figure()
     # ax=initfig.add_subplot()

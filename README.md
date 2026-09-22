@@ -29,6 +29,8 @@ Flet 1.xへの移行はしていません。PythonのDockerタグは3.11系列�
 JVNだけなら `python SKED_GUITool.py`、VERAだけなら `python SKED_GUITool_vex.py` でも起動できます。
 観測網を変える場合はアプリを再起動（Webでは別タブを開く）してください。
 
+配布VEX例から新しい観測設定を取り込む場合は、[テンプレート作成手順](docs/vex-templates.md) を参照してください。
+
 ## Web版・ローカル版の入出力
 
 Web版は `Import from text` にDRG/VEXを貼り付け、`Copy Clipboard` で出力画面を開きます。
@@ -54,7 +56,10 @@ Check時にIERSデータを確認し、収録範囲・出典・観測値/予測�
 Check・Az/El Check・仰角/UVプロットでIERSを確認する間は、タブに関係なく
 英語の待機ダイアログと進行中のマークを表示します（ダウンロード進捗率ではありません）。
 自動更新は有効、取得タイムアウト10秒、予測データの更新判定は30日です。
-キャッシュの永続Volumeは不要です。再起動後に必要な場合だけ再取得します。
+Dockerビルド時にIERS-Aを取得し、`/opt/sked-cache` に同梱します。
+休止・再起動後も同梱キャッシュから読み込めます。古い予測値が必要になった場合は実行時に更新します。
+永続Volumeは不要ですが、実行時の更新分は休止・再起動で失われます。
+同梱データの更新にはRenderの **Clear build cache & deploy** を使います。
 
 `astropy-iers-data` のバージョンもrequirements.txtに記録しています。
 将来の更新時は、一時環境で同パッケージを更新し、テスト後にrequirements.txtを再生成します。

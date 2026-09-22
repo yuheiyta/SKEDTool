@@ -27,6 +27,7 @@ def main(page):
 if __name__ == "__main__":
     if os.environ.get('FLET_FORCE_WEB_SERVER', '').lower() in ('1', 'true') or os.environ.get('PORT'):
         ft.app(target=main, view=None, host='0.0.0.0',
+               assets_dir=str(ROOT / 'assets'),
                port=int(os.environ.get('PORT', os.environ.get('FLET_SERVER_PORT', '8000'))))
     else:
-        ft.app(target=main)
+        ft.app(target=main, assets_dir=str(ROOT / 'assets'))

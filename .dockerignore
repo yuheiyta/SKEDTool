@@ -11,6 +11,7 @@
 !schedule_validation.py
 !astronomy_helpers.py
 !iers_status.py
+!prepare_iers_cache.py
 !drg_conversion.py
 !xml_conversion.py
 !antenna.sch
@@ -22,3 +23,6 @@
 **/.DS_Store
 
 !calibrator_catalog.py
+!vex_templates.py
+!assets/
+!assets/favicon.png
