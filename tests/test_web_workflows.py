@@ -57,7 +57,7 @@ class WorkflowTests(unittest.TestCase):
         model.read(FIXTURES / 'r26109a.vex')
         validate_schedule(model, vera=True)
         model.sched.list[0].station = model.sched.list[0].station[:3]
-        with self.assertRaisesRegex(ValueError, '4局'):
+        with self.assertRaisesRegex(ValueError, 'four stations'):
             validate_schedule(model, vera=True)
 
     def test_jvn_reorders_same_array_and_rejects_different_array(self):
@@ -68,7 +68,7 @@ class WorkflowTests(unittest.TestCase):
         model.adjust()
         self.assertEqual([a.code for a in model.sked.skeds[0].antennas], [a.code for a in model.sked.skeds[1].antennas])
         model.sked.skeds[1].stations.pop()
-        with self.assertRaisesRegex(ValueError, '共通'):
+        with self.assertRaisesRegex(ValueError, 'same stations'):
             validate_schedule(model)
 
     def test_xml_isolated_and_invalid_options_rejected(self):

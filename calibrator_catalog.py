@@ -18,7 +18,7 @@ def load_catalog():
 
 def search_catalog(target, flux, minimum, maximum, expand=False):
     if not np.isfinite([flux, minimum, maximum]).all() or flux <= 0 or minimum < 0 or maximum <= minimum:
-        raise ValueError('検索範囲とフラックス閾値に有効な正の値を指定してください。')
+        raise ValueError('Enter valid positive search limits and a flux threshold.')
     coordinates, table = load_catalog()
     distance = target.separation(coordinates).deg
     for attempt in range(64):
@@ -37,4 +37,4 @@ def search_catalog(target, flux, minimum, maximum, expand=False):
             break
         maximum = min(180.0, maximum * 1.5) if expand else maximum
         flux *= 0.75
-    raise ValueError('条件に合う較正天体が見つかりませんでした。検索範囲を変更してください。')
+    raise ValueError('No calibrator matches the criteria. Change the search limits.')

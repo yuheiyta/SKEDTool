@@ -1,6 +1,7 @@
+from threading import RLock
 from astronomy_helpers import simbad_coordinate
 from schedule_validation import validate_schedule
-from schedule_io import show_paste, show_outputs, prepare_iers
+from schedule_io import show_paste, show_outputs, prepare_iers, plot_action
 import SKEDTools
 from drg_conversion import convert_drg, converter_path
 from xml_conversion import convert_xml, xml_script
@@ -22,16 +23,33 @@ matplotlib.use("Agg")
 
 def main(page: Page):
 
+    event_lock = RLock()
+    event_depth = 0
+
     def error_handler(func):
         def wrapper(*args, **kwargs):
+            nonlocal event_depth
+            if not event_lock.acquire(blocking=False):
+                return None  # Ignore clicks while this session is processing.
+            event_depth += 1
             try:
                 return func(*args, **kwargs)
-            except Exception as e:
-                bannertext.value = f"{e}"
+            except Exception as error:
+                if event_depth > 1:
+                    raise
+                bannertext.value = str(error)
                 page.banner.open = True
                 page.update()
-                return None  # エラーが発生した場合の戻り値を指定します
+            finally:
+                event_depth -= 1
+                event_lock.release()
         return wrapper
+
+    def plt_update(fig):
+        previous = mpl.figure
+        mpl.figure = fig
+        if previous is not fig:
+            plt.close(previous)
 
     # Pick files dialog
     @error_handler
@@ -62,9 +80,15 @@ def main(page: Page):
 
     def import_fromtxt(e):
         def apply(text):
-            drg.readtxt(text)
-            selected_file.value = drg.exper.obscode
-            all_update(selected_index=0)
+            nonlocal event_depth
+            with event_lock:
+                event_depth += 1
+                try:
+                    drg.readtxt(text)
+                    selected_file.value = drg.exper.obscode
+                    all_update(selected_index=0)
+                finally:
+                    event_depth -= 1
         show_paste(page, apply)
 
     @error_handler 
@@ -364,6 +388,7 @@ def main(page: Page):
             page.update()
 
     @error_handler     
+    @plot_action(page)
     def skd_azel(e):
         prepare_iers(page, iers_text, validate_schedule(drg, vera=False))
         def check_slewspeed(altaz_p,altaz_i,sked_antenna,timed):
@@ -445,12 +470,14 @@ def main(page: Page):
         actions=[ft.TextButton("Close", on_click=close_banner)])
 
     @error_handler 
+    @plot_action(page)
     def sourceplot(e):
         fig = drg.sourceplot()
-        mpl.figure=fig
+        plt_update(fig)
         page.update()
 
     @error_handler        
+    @plot_action(page)
     def lst_elplot(e):
         prepare_iers(page, iers_text, validate_schedule(drg, vera=False))
         srcnames=[]
@@ -458,28 +485,30 @@ def main(page: Page):
             srcnames.append(drg.source.sources[i-1].name)
         fig = drg.el_plot(srcnames=srcnames)
         #image_widget = embed_matplotlib_figure(fig)
-        mpl.figure=fig
+        plt_update(fig)
         #fig.savefig("testfig.png")
         page.update()
 
     @error_handler           
+    @plot_action(page)
     def ut_elplot(e):
         prepare_iers(page, iers_text, validate_schedule(drg, vera=False))
         srcnames=[]
         for i in selected_src:
             srcnames.append(drg.source.sources[i-1].name)
         fig = drg.el_plot(srcnames=srcnames,timezone="ut")
-        mpl.figure=fig
+        plt_update(fig)
         page.update()
         
     @error_handler
+    @plot_action(page)
     def jst_elplot(e):
         prepare_iers(page, iers_text, validate_schedule(drg, vera=False))
         srcnames=[]
         for i in selected_src:
             srcnames.append(drg.source.sources[i-1].name)
         fig = drg.el_plot(srcnames=srcnames,timezone="jst")
-        mpl.figure=fig
+        plt_update(fig)
         page.update()   
 
     @error_handler         
@@ -496,10 +525,9 @@ def main(page: Page):
         selected_src=[]
         selected_skd=[]
         #print("page updating")
-        page.controls.clear()
         tabs=[file_tab,exp_tab,sta_tab,src_tab,skd_tab,plt_tab]
         t = ft.Tabs(selected_index=selected_index,animation_duration=300,tabs=tabs,expand=1)
-        page.add(t)
+        page.controls[:] = [t]
         page.update()
 
     @error_handler    
@@ -515,6 +543,7 @@ def main(page: Page):
         page.update()
 
     @error_handler     
+    @plot_action(page)
     def drg_deepcheck(e):
         scans = validate_schedule(drg, vera=False)
         file_output_text.value = ""
@@ -523,7 +552,7 @@ def main(page: Page):
         page.update()
         msg, fig = drg.azelplot()
         file_output_text.value= "\n".join(msg)
-        mpl.figure=fig
+        plt_update(fig)
         page.update()
 
     @error_handler    
@@ -614,7 +643,7 @@ def main(page: Page):
 
 
 
-    page.title = "SKED Tool"  # アプリタイトル
+    page.title = "SKEDTool_JP — JVN"  # アプリタイトル
     
     exper=SKEDTools.SKD_Exper("")
     src=SKEDTools.SKD_Source()
@@ -691,8 +720,8 @@ def main(page: Page):
     file_col_timeshift = ft.Column([file_row_timeshift,file_input_timeshift])
     file_row_shift =ft.Row([file_col_lstshift,file_col_timeshift],spacing=50)
     
-    file_make_txt = ft.Text("編集中のスケジュールから生成（外部ツールを別途用意）")
-    file_make_skd = ft.Text("SKD変換器は別途用意が必要です。", visible=not converter_path().is_file())
+    file_make_txt = ft.Text("Generate from the current schedule (external tools required)")
+    file_make_skd = ft.Text("An external SKD converter is required.", visible=not converter_path().is_file())
     file_generate_skd = ft.ElevatedButton(text="Generate .skd from current schedule", on_click=generate_skd, disabled=not converter_path().is_file())
     file_make_xml = ft.ElevatedButton(text="Generate .xml",on_click=generate_xml, disabled=not xml_script().is_file())
     #file_xml_freq = ft.TextField(label = "Freq.", hint_text="ex) C",helper_text="C or X",width=14*6)

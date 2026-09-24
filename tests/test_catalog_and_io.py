@@ -24,7 +24,7 @@ class CatalogTests(unittest.TestCase):
             self.assertEqual(list(found[:, 0]), ['2.00', '10.00'])
             self.assertEqual(list(found[:, 1]), ['near', 'far'])
             self.assertEqual(rows[0, 8], '--')
-            with self.assertRaisesRegex(ValueError, '見つかりません'):
+            with self.assertRaisesRegex(ValueError, 'No calibrator'):
                 search_catalog(SkyCoord(90*u.deg, 0*u.deg), 0.1, 0.32, 2.2)
 
     def test_both_simbad_formats(self):

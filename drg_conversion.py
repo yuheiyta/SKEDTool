@@ -23,7 +23,7 @@ def convert_drg(text, experiment="schedule", executable=None):
         raise ValueError("DRG requires EXPER, SOURCES and SKED sections")
     executable = Path(executable or converter_path()).resolve()
     if not executable.is_file():
-        raise FileNotFoundError("SKD変換器は同梱していません。利用許可のある実行ファイルをSKED_DRGCONVに設定してください。")
+        raise FileNotFoundError("SKD converter is not bundled. Set SKED_DRGCONV to an executable you are authorized to use.")
     with tempfile.TemporaryDirectory(prefix="schedule-drg-") as directory:
         working = Path(directory)
         normalized = text.replace("\r\n", "\n").replace("\r", "\n")

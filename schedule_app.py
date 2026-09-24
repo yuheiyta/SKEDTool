@@ -1,6 +1,7 @@
 """Shared desktop entry point for the JVN and VERA editors."""
 import os
 from pathlib import Path
+from threading import Lock
 
 import flet as ft
 
@@ -10,15 +11,22 @@ import SKED_GUITool_vex
 
 
 def main(page):
-    page.title = "JVN / VERA Schedule Tool"
+    page.title = "SKEDTool_JP — JVN / VERA"
+    start_lock = Lock()
+    started = False
 
     def start(editor):
-        page.controls.clear()
-        editor(page)
+        nonlocal started
+        with start_lock:
+            if started:
+                return
+            page.controls.clear()
+            editor(page)
+            started = True
 
     page.add(ft.Column([
-        ft.Text("Schedule Tool", size=28),
-        ft.Text("使用する観測網を選択してください。"),
+        ft.Text("SKEDTool_JP", size=28),
+        ft.Text("Select an observing network."),
         ft.ElevatedButton("JVN — DRG", on_click=lambda _: start(SKED_GUITool.main)),
         ft.ElevatedButton("VERA — VEX", on_click=lambda _: start(SKED_GUITool_vex.main)),
     ]))

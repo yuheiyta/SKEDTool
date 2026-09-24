@@ -18,20 +18,20 @@ def xml_script():
 def convert_xml(text, *, frequency, recorder, scans, length, fft, delay=0, rate=0, script=None):
     script = Path(script or xml_script()).resolve()
     if not script.is_file():
-        raise FileNotFoundError('XML生成ツールは同梱していません。利用許可のあるmk_xml.pyを設定してください。')
+        raise FileNotFoundError('XML converter is not bundled. Configure an authorized mk_xml.py script.')
     text = normalize_text(text)
     if frequency not in ('C', 'X') or recorder not in ('vsrec', 'octadisk'):
-        raise ValueError('FrequencyとRecorderを選択してください。')
+        raise ValueError('Select Frequency and Recorder.')
     scans = [int(value) for value in str(scans).replace(',', ' ').split()]
     length, fft = int(length), int(fft)
     delay, rate = float(delay), float(rate)
     if not scans or min(scans) < 1 or length < 1 or fft < 2 or fft & (fft - 1):
-        raise ValueError('Scanは1以上、Lengthは正の整数、FFTは2以上の2の累乗を指定してください。')
+        raise ValueError('Scan and Length must be positive integers; FFT must be a power of two, at least 2.')
     if not math.isfinite(delay) or not math.isfinite(rate):
-        raise ValueError('DelayとRateには有限の数値を指定してください。')
+        raise ValueError('Delay and Rate must be finite numbers.')
     scan_lines = [line for line in text.splitlines() if 'PREOB' in line and not line.startswith('*')]
     if max(scans) > len(scan_lines):
-        raise ValueError('指定したScanが存在しません。')
+        raise ValueError('The requested scan does not exist.')
     with tempfile.TemporaryDirectory(prefix='schedule-xml-') as directory:
         working = Path(directory)
         (working / 'schedule.DRG').write_text(text, encoding='utf-8')
@@ -41,12 +41,12 @@ def convert_xml(text, *, frequency, recorder, scans, length, fft, delay=0, rate=
                 '--length', str(length), '--fft', str(fft), '-y']
         result = subprocess.run(args, cwd=working, capture_output=True, text=True, timeout=30)
         if result.returncode:
-            raise RuntimeError('XML生成に失敗しました: ' + (result.stderr or result.stdout)[-2000:])
+            raise RuntimeError('XML generation failed: ' + (result.stderr or result.stdout)[-2000:])
         outputs = {}
         for path in sorted(working.glob('*.xml')):
             content = path.read_text(encoding='utf-8')
             ET.fromstring(content)
             outputs[path.name] = content
         if not outputs:
-            raise RuntimeError('XMLが生成されませんでした: ' + result.stdout[-2000:])
+            raise RuntimeError('No XML was generated: ' + result.stdout[-2000:])
         return outputs

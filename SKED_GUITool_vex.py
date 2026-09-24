@@ -1,7 +1,9 @@
+from threading import RLock
 from astronomy_helpers import simbad_coordinate
 from schedule_validation import validate_schedule
-from schedule_io import show_paste, show_outputs, prepare_iers
+from schedule_io import show_paste, show_outputs, prepare_iers, plot_action
 from vex_templates import CUSTOM_DIR, load_template, apply_template, parse_template
+from vera_import import vera_only_text
 import SKEDTools_vex
 import flet as ft
 from flet import Page
@@ -23,15 +25,26 @@ matplotlib.use("Agg")
 
 def main(page: Page):
 
+    event_lock = RLock()
+    event_depth = 0
+
     def error_handler(func):
         def wrapper(*args, **kwargs):
+            nonlocal event_depth
+            if not event_lock.acquire(blocking=False):
+                return None  # Ignore clicks while this session is processing.
+            event_depth += 1
             try:
                 return func(*args, **kwargs)
-            except Exception as e:
-                bannertext.value = f"{e}"
+            except Exception as error:
+                if event_depth > 1:
+                    raise
+                bannertext.value = str(error)
                 page.banner.open = True
                 page.update()
-                return None  # エラーが発生した場合の戻り値を指定します
+            finally:
+                event_depth -= 1
+                event_lock.release()
         return wrapper
 
     # Pick files dialog
@@ -39,7 +52,7 @@ def main(page: Page):
     def pick_file_result(e: ft.FilePickerResultEvent):
         if(e.files!=None):
             path = e.files[0].path
-            vex.read(path)
+            import_vera(Path(path).read_text(encoding='utf-8-sig'))
             obscode = path.split("/")[-1]
             selected_file.value = obscode
             #selected_file.update()
@@ -194,11 +207,10 @@ def main(page: Page):
 
     @error_handler
     def plt_update(fig):
-        nonlocal plt_tab
-        mpl = MatplotlibChart(figure=fig,expand=True,original_size=True)
-        #plt_col =ft.Column([mpl],scroll=ft.ScrollMode.ALWAYS)
-        plt_cont =ft.Container(mpl,  alignment=ft.alignment.top_center)
-        plt_tab = ft.Tab(text="Plot",content=plt_cont)
+        previous = mpl.figure
+        mpl.figure = fig
+        if previous is not fig:
+            plt.close(previous)
 
 
     @error_handler 
@@ -458,6 +470,7 @@ def main(page: Page):
 
     #@profile
     @error_handler     
+    @plot_action(page)
     def skd_azel(e):
         prepare_iers(page, iers_text, validate_schedule(vex, vera=True))
         def check_slewspeed(altaz_p,altaz_i,sked_antenna,timed):
@@ -540,6 +553,7 @@ def main(page: Page):
 
     #@profile
     @error_handler 
+    @plot_action(page)
     def sourceplot(e):
         fig = vex.sourceplot()
         #fig.savefig("assets/tmpfig.png")
@@ -553,6 +567,7 @@ def main(page: Page):
 
     #@profile
     @error_handler        
+    @plot_action(page)
     def lst_elplot(e):
         prepare_iers(page, iers_text, validate_schedule(vex, vera=True))
         srcnames=[]
@@ -566,28 +581,29 @@ def main(page: Page):
         page_update(plt_index)
 
     @error_handler           
+    @plot_action(page)
     def ut_elplot(e):
         prepare_iers(page, iers_text, validate_schedule(vex, vera=True))
         srcnames=[]
         for i in selected_src:
             srcnames.append(vex.source.list[i-1].name)
         fig = vex.el_plot(srcnames=srcnames,timezone="ut")
-        mpl.figure=fig
         plt_update(fig)
         page_update(plt_index)
         
     @error_handler
+    @plot_action(page)
     def jst_elplot(e):
         prepare_iers(page, iers_text, validate_schedule(vex, vera=True))
         srcnames=[]
         for i in selected_src:
             srcnames.append(vex.source.list[i-1].name)
         fig = vex.el_plot(srcnames=srcnames,timezone="jst")
-        mpl.figure=fig
         plt_update(fig)
         page_update(plt_index)    
  
     @error_handler
+    @plot_action(page)
     def skd_uvplot(e):
         prepare_iers(page, iers_text, validate_schedule(vex, vera=True))
         if(skd_uvplot_sta.value != ""):
@@ -595,7 +611,6 @@ def main(page: Page):
             fig = vex.uvplot(skd_uvplot_srcname.value, antcodes=antcodes)
         else:
             fig = vex.uvplot(skd_uvplot_srcname.value)
-        mpl.figure=fig
         plt_update(fig)
         page_update(plt_index)
 
@@ -614,10 +629,9 @@ def main(page: Page):
         selected_src=[]
         selected_skd=[]
         #print("page updating")
-        page.controls.clear()
         tabs=[file_tab,mode_tab, exp_tab,src_tab,skd_tab,plt_tab]
         t = ft.Tabs(selected_index=selected_index,animation_duration=300,tabs=tabs,expand=1)
-        page.add(t)
+        page.controls[:] = [t]
         page.update()
 
     @error_handler  
@@ -645,6 +659,7 @@ def main(page: Page):
         page.update()
 
     @error_handler     
+    @plot_action(page)
     def vex_deepcheck(e):
         scans = validate_schedule(vex, vera=True)
         file_output_text.value = ""
@@ -653,7 +668,7 @@ def main(page: Page):
         page.update()
         msg, fig = vex.azelplot()
         file_output_text.value= "\n".join(msg)
-        mpl.figure=fig
+        plt_update(fig)
         page.update()
 
     @error_handler    
@@ -787,12 +802,25 @@ def main(page: Page):
 
     def import_fromtxt(e):
         def apply(text):
-            vex.readtxt(text)
-            selected_file.value = vex.glob.exper
-            all_update(selected_index=0)
+            nonlocal event_depth
+            with event_lock:
+                event_depth += 1
+                try:
+                    import_vera(text)
+                    selected_file.value = vex.glob.exper
+                    all_update(selected_index=0)
+                finally:
+                    event_depth -= 1
         show_paste(page, apply)
 
-    page.title = "SKED Tool"  # アプリタイトル
+    def import_vera(text):
+        filtered, removed = vera_only_text(text)
+        vex.readtxt(filtered)
+        if removed:
+            page.snack_bar = ft.SnackBar(ft.Text('Imported VERA stations only. Removed: ' + ', '.join(removed)))
+            page.snack_bar.open = True
+
+    page.title = "SKEDTool_JP — VERA"  # アプリタイトル
     src_index, skd_index, plt_index = 3,4,5
     observing_templates = {}
     for path in sorted(CUSTOM_DIR.glob('*.json')):
