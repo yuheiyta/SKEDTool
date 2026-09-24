@@ -3,7 +3,7 @@ services:
   - type: web
     name: skedtool
     runtime: docker
-    repo: https://github.com/yuheiyta/SKEDTool
+    repo: https://github.com/yuheiyta/SKEDTool_JP
     branch: main
     dockerfilePath: ./Dockerfile
     dockerContext: .

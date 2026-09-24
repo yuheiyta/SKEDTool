@@ -5,7 +5,7 @@
 
 ## Blueprintで作成
 
-1. 設定ファイルをGitHubの `yuheiyta/SKEDTool` の `main` にpushします。
+1. 設定ファイルをGitHubの `yuheiyta/SKEDTool_JP` の `main` にpushします。
 2. Render Dashboardで **New > Blueprint** を開き、GitHubの同リポジトリを接続します。
 3. Branchを `main`、Blueprint Pathを `render.yaml` にします。
 4. 作成対象が **skedtool / Web Service / Free の1サービスのみ** であることを確認します。
